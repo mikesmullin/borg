@@ -13,5 +13,6 @@
   "license": "BSD",
   "dependencies": {
     "control": "~0.2.3",
+    "commander": "~1.1.1"
   }
 }
