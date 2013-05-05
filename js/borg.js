@@ -41,7 +41,7 @@ switch (process.argv[2]) {
         user: user,
         pass: pass,
         host: host,
-        cmd: 'date'
+        cmd: 'ping -c3 google.com'
       }, function(err) {});
     }
     break;

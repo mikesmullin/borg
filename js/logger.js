@@ -7,12 +7,18 @@ module.exports = Logger = (function() {
 
   Logger.started = new Date;
 
-  Logger.out = function(s) {
-    var current;
-    if (typeof console !== "undefined" && console !== null) {
-      current = new Date;
-      return console.log("" + (current - this.started) + " | " + s);
+  Logger.out = function() {
+    var o, s;
+    o = {};
+    switch (arguments.length) {
+      case 2:
+        o = arguments[0], s = arguments[1];
+        break;
+      case 1:
+        s = arguments[0];
     }
+    o.type || (o.type = 'info');
+    return process.stdout.write("" + (new Date - this.started) + "ms " + (o.host ? "" + o.host + " " : "") + (o.type !== 'out' ? "[" + o.type + "]" : "|") + " " + s + (o.type === 'out' ? "" : "\n"));
   };
 
   return Logger;

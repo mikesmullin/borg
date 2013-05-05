@@ -21,36 +21,39 @@ module.exports = Ssh = (function() {
     this.user = o.user || 'root';
     this.port = o.port || 22;
     this.ssh = new Ssh2();
-    Logger.out('connecting');
     this.ssh.on('connect', function() {
-      return Logger.out('connected');
+      return Logger.out({
+        host: _this.host
+      }, 'ssh connected');
     });
     this.ssh.on('ready', function() {
-      Logger.out('ready');
       return _this.ssh.exec(_this.cmd, function(err, stream) {
         if (err) {
           return cb(err);
         }
         stream.on('data', function(data, extended) {
-          Logger.out("" + (extended === 'stderr' ? 'stderr' : 'stdout') + ": " + data);
+          Logger.out({
+            host: _this.host,
+            type: (extended === 'stderr' ? 'err' : 'out')
+          }, data);
           if (o.stream_data) {
             return o.stream_data.apply(null, arguments);
           }
         });
         stream.on('end', function() {
-          Logger.out('stream EOF');
           if (o.stream_end) {
             return o.stream_end;
           }
         });
         stream.on('close', function() {
-          Logger.out('stream closed');
           if (o.stream_close) {
             return o.stream_close;
           }
         });
         return stream.on('exit', function(code, signal) {
-          Logger.out("stream exit code " + code + ", signal " + signal);
+          Logger.out({
+            host: _this.host
+          }, "ssh stream exit. code: " + code + ", signal: " + signal);
           if (o.stream_exit) {
             o.stream_exit.apply(null, arguments);
           }
@@ -60,19 +63,22 @@ module.exports = Ssh = (function() {
       });
     });
     this.ssh.on('error', function(err) {
-      Logger.out("Connection error: " + err);
+      Logger.out({
+        host: _this.host
+      }, "ssh error: " + err);
       if (o.error) {
         return o.error.apply(null, arguments);
       }
     });
     this.ssh.on('end', function() {
-      Logger.out("Connection end");
       if (o.end) {
         return o.end;
       }
     });
     this.ssh.on('close', function() {
-      Logger.out("Connection closed");
+      Logger.out({
+        host: _this.host
+      }, "ssh close");
       if (o.close) {
         return o.close;
       }

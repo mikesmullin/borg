@@ -44,7 +44,7 @@ switch process.argv[2]
     #console.log process.argv.slice(3)
     for node in process.argv.slice(3) when match = node.match(/^(.+?)(:(.+))?@(.+)$/)
       [nil, user, nil, pass, host] = match
-      new Ssh user: user, pass: pass, host: host, cmd: 'date', (err) ->
+      new Ssh user: user, pass: pass, host: host, cmd: 'ping -c3 google.com', (err) ->
 
   when 'ssh'
     console.log process.argv.slice(3)

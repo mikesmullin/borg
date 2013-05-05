@@ -9,35 +9,35 @@ module.exports = class Ssh
     @user = o.user || 'root'
     @port = o.port || 22
     @ssh  = new Ssh2()
-    Logger.out 'connecting'
-    @ssh.on 'connect', ->
-      Logger.out 'connected'
+    #Logger.out host: @host, 'ssh connecting...'
+    @ssh.on 'connect', =>
+      Logger.out host: @host, 'ssh connected'
     @ssh.on 'ready', =>
-      Logger.out 'ready'
+      #Logger.out host: @host, 'ssh authenticated'
       @ssh.exec @cmd, (err, stream) =>
         return cb err if err
-        stream.on 'data', (data, extended) ->
-          Logger.out "#{if extended is 'stderr' then 'stderr' else 'stdout'}: #{data}"
+        stream.on 'data', (data, extended) =>
+          Logger.out host: @host, type: (if extended is 'stderr' then 'err' else 'out'), data
           o.stream_data.apply null, arguments if o.stream_data
-        stream.on 'end', ->
-          Logger.out 'stream EOF'
+        stream.on 'end', =>
+          #Logger.out host: @host, 'ssh stream eof'
           o.stream_end if o.stream_end
-        stream.on 'close', ->
-          Logger.out 'stream closed'
+        stream.on 'close', =>
+          #Logger.out host: @host, 'ssh stream closed'
           o.stream_close if o.stream_close
         stream.on 'exit', (code, signal) =>
-          Logger.out "stream exit code #{code}, signal #{signal}"
+          Logger.out host: @host, "ssh stream exit. code: #{code}, signal: #{signal}"
           o.stream_exit.apply null, arguments if o.stream_exit
           @ssh.end()
           cb null
-    @ssh.on 'error', (err) ->
-      Logger.out "Connection error: #{err}"
+    @ssh.on 'error', (err) =>
+      Logger.out host: @host, "ssh error: #{err}"
       o.error.apply null, arguments if o.error
-    @ssh.on 'end', ->
-      Logger.out "Connection end"
+    @ssh.on 'end', =>
+      #Logger.out host: @host, "ssh end"
       o.end if o.end
-    @ssh.on 'close', ->
-      Logger.out "Connection closed"
+    @ssh.on 'close', =>
+      Logger.out host: @host, "ssh close"
       o.close if o.close
     @ssh.connect
       host: @host
