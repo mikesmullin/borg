@@ -1,8 +1,40 @@
-Logger = require './logger'
-Ssh = require './ssh'
-#spawn = require('child_process').spawn
+Logger = null
+Ssh    = null
+async  = null
 
-switch process.argv[2]
+class Borg
+  @nodes: []
+  @args: []
+  @options: {}
+  @cmd: {}
+
+  constructor: (cmd) ->
+    last_option = null
+    for arg in process.argv.slice(3)
+      if match = arg.match(/^(.+?)(:(.+))?@(.+)$/)
+        Borg.nodes.push user: match[1], pass: match[3], host: match[4]
+      else
+        if arg[0] is '-'
+          Borg.options[last_option = arg.split(/^--?/)[1]] = true
+        else if last_option isnt null
+          Borg.options[last_option] = arg
+          last_option = null
+        else
+          Borg.args.push arg
+    Borg[Borg.cmd = cmd]()
+    console.log cmd: Borg.cmd, nodes: Borg.nodes, args: Borg.args, options: Borg.options
+
+  @rekey: ->
+    #new Ssh user: user, pass: pass, host: host, cmd: 'ping -c3 google.com', (err) ->
+
+  @assimilate: ->
+    #new Ssh user: user, pass: pass, host: host, cmd: 'ping -c3 google.com', (err) ->
+
+  @command: (host) ->
+    #new Ssh user: user, pass: pass, host: host, cmd: 'ping -c3 google.com', (err) ->
+
+
+switch cmd = process.argv[2]
   when '-V', '--version', 'version'
     pkg = require '../package.json'
     console.log """
@@ -20,19 +52,35 @@ switch process.argv[2]
           -i  identity file path
 
         """
-      when 'ssh'
-        console.log ''
-      when 'deploy'
-        console.log ''
+      when 'assimilate'
+        console.log """
+        Usage: borg assimilate [options] <user:password@host ...>
+
+        Options:
+
+          -r, --role  assign each node the following role
+
+        """
+      when 'command'
+        console.log """
+        Usage: borg command [options] <user:password@host ...>
+
+        Options:
+
+          --sudo              use `sudo -i`
+          -u=<user>           use `sudo -iu`
+          -c=<shell_command>  command to execute
+
+        """
       else
         console.log """
         Usage: borg <command> [options] <host ...>
 
         Commands:
 
-          rekey   copy ssh public key to authorized_hosts on remote host(s)
-          ssh     bulk execute command on remote host(s)
-          deploy  execute cookbook on remote host(s)
+          rekey       copy ssh public key to authorized_hosts on remote host(s)
+          assimilate  bootstrap and cook remote host(s)
+          command     bulk execute command on remote host(s)
 
         Options:
 
@@ -40,13 +88,10 @@ switch process.argv[2]
           -V, --version  output version number
 
         """
-  when 'rekey'
-    #console.log process.argv.slice(3)
-    for node in process.argv.slice(3) when match = node.match(/^(.+?)(:(.+))?@(.+)$/)
-      [nil, user, nil, pass, host] = match
-      new Ssh user: user, pass: pass, host: host, cmd: 'ping -c3 google.com', (err) ->
+  when 'rekey', 'assimilate', 'command'
+    Logger = require './logger'
+    Ssh = require './ssh'
+    async = require 'async2'
+    Borg cmd
 
-  when 'ssh'
-    console.log process.argv.slice(3)
-  when 'deploy'
-    console.log process.argv.slice(3)
+
