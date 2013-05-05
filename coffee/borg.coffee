@@ -1,11 +1,6 @@
+Logger = require './logger'
+Ssh = require './ssh'
 #spawn = require('child_process').spawn
-
-class Debugger
-  @started: new Date
-  @log: (s) ->
-    if console?
-      current = new Date
-      console.log "[#{(current - @started) / 1000}s] #{s}"
 
 switch process.argv[2]
   when '-V', '--version', 'version'
@@ -46,38 +41,10 @@ switch process.argv[2]
 
         """
   when 'rekey'
-    console.log process.argv.slice(3)
+    #console.log process.argv.slice(3)
     for node in process.argv.slice(3) when match = node.match(/^(.+?)(:(.+))?@(.+)$/)
       [nil, user, nil, pass, host] = match
-
-      console.log 'trying'
-      ssh = new (require 'ssh2')
-      ssh.on 'connect', ->
-        Debugger.log 'connected'
-      ssh.on 'ready', ->
-        Debugger.log 'ready'
-        ssh.exec 'date', (err, stream) ->
-          throw err if err
-          stream.on 'data', (data, extended) ->
-            Debugger.log "#{if extended is 'stderr' then 'stderr' else 'stdout'}: #{data}"
-          stream.on 'end', ->
-            Debugger.log 'stream EOF'
-          stream.on 'close', ->
-            Debugger.log 'stream closed'
-          stream.on 'exit', (code, signal) ->
-            Debugger.log "stream exit code #{code}, signal #{signal}"
-            ssh.end()
-      ssh.on 'error', (err) ->
-        Debugger.log "Connection error: #{err}"
-      ssh.on 'end', () ->
-        Debugger.log "Connection end"
-      ssh.on 'close', () ->
-        Debugger.log "Connection closed"
-      ssh.connect
-        host: host
-        port: 22
-        username: user
-        password: pass
+      new Ssh user: user, pass: pass, host: host, cmd: 'date', (err) ->
 
   when 'ssh'
     console.log process.argv.slice(3)
