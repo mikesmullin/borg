@@ -11,6 +11,6 @@
   "author": "Mike Smullin <mike@smullindesign.com>",
   "license": "BSD",
   "dependencies": {
-    "control": "~0.2.3"
+    "ssh2": "~0.2.5"
   }
 }
