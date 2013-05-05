@@ -27,6 +27,10 @@ module.exports = Ssh = (function() {
       }, 'ssh connected');
     });
     this.ssh.on('ready', function() {
+      Logger.out({
+        host: _this.host,
+        type: 'info'
+      }, "execute: " + _this.cmd);
       return _this.ssh.exec(_this.cmd, function(err, stream) {
         if (err) {
           return cb(err);
@@ -57,8 +61,7 @@ module.exports = Ssh = (function() {
           if (o.stream_exit) {
             o.stream_exit.apply(null, arguments);
           }
-          _this.ssh.end();
-          return cb(null);
+          return _this.ssh.end();
         });
       });
     });
@@ -80,8 +83,9 @@ module.exports = Ssh = (function() {
         host: _this.host
       }, "ssh close");
       if (o.close) {
-        return o.close;
+        o.close;
       }
+      return cb(null);
     });
     this.ssh.connect({
       host: this.host,

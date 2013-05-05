@@ -1,6 +1,8 @@
 Ssh2 = require 'ssh2'
 Logger = require './logger'
 
+# TODO: color out put based on exit code. green if 0. else red
+
 module.exports = class Ssh
   constructor: (o, cb) ->
     return cb 'host is required' unless @host = o.host
@@ -14,6 +16,7 @@ module.exports = class Ssh
       Logger.out host: @host, 'ssh connected'
     @ssh.on 'ready', =>
       #Logger.out host: @host, 'ssh authenticated'
+      Logger.out host: @host, type: 'info', "execute: #{@cmd}"
       @ssh.exec @cmd, (err, stream) =>
         return cb err if err
         stream.on 'data', (data, extended) =>
@@ -29,7 +32,6 @@ module.exports = class Ssh
           Logger.out host: @host, "ssh stream exit. code: #{code}, signal: #{signal}"
           o.stream_exit.apply null, arguments if o.stream_exit
           @ssh.end()
-          cb null
     @ssh.on 'error', (err) =>
       Logger.out host: @host, "ssh error: #{err}"
       o.error.apply null, arguments if o.error
@@ -39,6 +41,7 @@ module.exports = class Ssh
     @ssh.on 'close', =>
       Logger.out host: @host, "ssh close"
       o.close if o.close
+      cb null
     @ssh.connect
       host: @host
       port: @port

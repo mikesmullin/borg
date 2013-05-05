@@ -1,13 +1,13 @@
 {
   "name": "borg",
   "version": "0.0.1",
-  "description": "ERROR: No README.md file found!",
+  "description": "Automated provisioning and deployment with Node.JS.",
   "bin": "bin/borg",
-  "main": "index.js",
+  "main": "js/borg.js",
   "scripts": {
     "pretest": "coffee --bare -o js/ coffee/"
   },
-  "repository": "",
+  "repository": "https://github.com/mikesmullin/borg",
   "author": "Mike Smullin <mike@smullindesign.com>",
   "license": "BSD",
   "dependencies": {

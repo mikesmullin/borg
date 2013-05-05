@@ -1,3 +1,5 @@
+# TODO: enable levels of verbosity incl. debug mode
+
 module.exports = class Logger
   @started: new Date
   @out: ->

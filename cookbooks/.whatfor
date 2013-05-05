@@ -1,0 +1,6 @@
+cookbooks define step-by-step instructions
+for assimilation.
+
+unlike Chef they closely resemble bash
+scripts and can use logic to dynamically
+alter plans at runtime based on outcomes
