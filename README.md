@@ -22,3 +22,4 @@ borg help
 * pxe boot new machines and hold in queue (inspired by Dell Crowbar)
 * push updates to nodes like Knife/Chef-Solo might, but automatically on cron, rather than auto-pull them the way Chef Client + Chef Server do.
 * support doing everything--bootstrap, cook, etc.--in parallel with single commands
+* support switch statements and cli-passed-environment-arg within node + role .js attribute configs
