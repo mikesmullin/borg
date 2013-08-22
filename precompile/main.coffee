@@ -1,10 +1,7 @@
-Logger = require './Logger'
 Borg = require './Borg'
-Ssh    = require './Ssh'
-async  = require 'async2'
 
 switch cmd = process.argv[2]
-  when 'rekey', 'assimilate', 'command'
+  when 'rekey', 'assimilate', 'cmd'
     Borg cmd
   when '-V', '--version', 'version'
     pkg = require '../package.json'
@@ -33,7 +30,7 @@ switch cmd = process.argv[2]
           -r, --role  assign each node the following role
 
         """
-      when 'command'
+      when 'cmd'
         console.log """
         Usage: borg command [options] <user:password@host ...>
 
@@ -52,7 +49,7 @@ switch cmd = process.argv[2]
 
           rekey       copy ssh public key to authorized_hosts on remote host(s)
           assimilate  bootstrap and cook remote host(s)
-          command     bulk execute command on remote host(s)
+          cmd         bulk execute command on remote host(s)
 
         Options:
 

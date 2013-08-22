@@ -1,3 +1,11 @@
+Logger = require './Logger'
+Ssh    = require './Ssh'
+async = require 'async2'
+
+# TODO: support:
+# borg cmd --sudo u:p@localhost:223 -- test blah
+# borg cmd --sudo u:p@localhost:223 test blah
+
 module.exports =
 class Borg
   constructor: (cmd) ->
@@ -6,8 +14,8 @@ class Borg
     args = []
     last_option = null
     for arg in process.argv.slice(3)
-      if match = arg.match(/^(.+?)(:(.+))?@(.+)$/)
-        nodes.push user: match[1], pass: match[3], host: match[4]
+      if match = arg.match(/^(.+?)(:(.+))?@(.+?)(:(.+))?$/)
+        nodes.push user: match[1], pass: match[3], host: match[4], port: match[6]
       else
         if arg[0] is '-'
           options[last_option = arg.split(/^--?/)[1]] = true
@@ -16,12 +24,12 @@ class Borg
           last_option = null
         else
           args.push arg
-    console.log cmd: cmd, nodes: nodes, options: options, args: args
+    #console.log cmd: cmd, nodes: nodes, options: options, args: args
     flow = new async
-    for own node in nodes
+    for own k, node of nodes
       ((node) ->
         flow.parallel (next) ->
-          Borg[cmd](node, options, next)
+          Borg[cmd] node, options, next
       )(node)
     flow.go (err, results...) ->
       if err
@@ -38,7 +46,8 @@ class Borg
   @assimilate: (node, options, cb) ->
     #new Ssh user: user, pass: pass, host: host, cmd: 'ping -c3 google.com', (err) ->
 
-  @command: (node, options, cb) ->
-    new Ssh user: node.user, pass: node.pass, host: node.host, cmd: options.c, (err) ->
+  @cmd: (node, options, cb) ->
+    #console.log arguments
+    new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, (err) ->
       Logger.out host: node.host, type: 'err', err if err
       cb err

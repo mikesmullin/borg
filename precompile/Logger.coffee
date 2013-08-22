@@ -7,14 +7,15 @@ class Logger
       when 2 then [o, s] = arguments
       when 1 then [s] = arguments
     o.type ||= 'info'
-    o.type_color = 
+    o.type_color =
       info: 'yellow'
       out: 'reset'
-      err: 'red'
+      recv: 'red'
+      err: 'bright_red'
 
     process.stdout.write "#{Color.bright_white}#{new Date - @started}ms#{Color.reset} "+ 
       "#{if o.host then "#{RainbowIndex o.host}#{o.host}#{Color.reset} " else ""}"+
-      "#{Color[o.type_color[o.type]]}#{unless o.type is 'out' then "[#{o.type}]" else "|"}#{Color.reset} "+
+      "#{Color[o.type_color[o.type]]}#{if o.type is 'out' then '' else "[#{o.type}] "}#{Color.reset}"+
       "#{s}"+
       "#{if o.type is 'out' then "" else "\n"}"
 
