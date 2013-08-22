@@ -13,7 +13,7 @@ class Logger
       recv: 'red'
       err: 'bright_red'
 
-    process.stdout.write "#{Color.bright_white}#{new Date - @started}ms#{Color.reset} "+ 
+    process.stdout.write "#{Color.bright_white}#{new Date - @started}ms#{Color.reset} "+
       "#{if o.host then "#{RainbowIndex o.host}#{o.host}#{Color.reset} " else ""}"+
       "#{Color[o.type_color[o.type]]}#{if o.type is 'out' then '' else "[#{o.type}] "}#{Color.reset}"+
       "#{s}"+

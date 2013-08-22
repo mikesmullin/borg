@@ -20,6 +20,7 @@ module.exports = class Ssh
       @ssh.exec @cmd, (err, stream) =>
         return cb err if err
         stream.on 'data', (data, extended) =>
+          # TODO: color-code based on both stderr/stdout and the exit status code 0 or non-zero
           Logger.out host: @host, type: (if extended is 'stderr' then 'err' else 'recv'), data
           o.stream_data.apply null, arguments if o.stream_data
         stream.on 'end', =>
