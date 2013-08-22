@@ -3,13 +3,21 @@
   "version": "0.0.1",
   "description": "Automated provisioning and deployment with Node.JS.",
   "bin": "bin/borg",
-  "main": "js/borg.js",
+  "main": "static/main.js",
   "scripts": {
-    "pretest": "coffee --bare -o js/ coffee/"
+    "test": "cd precompile && mocha --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w test/unit/*.coffee",
+    "integration-test": "cd precompile/test/integration && mocha --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w *.coffee",
+    "prestart": "coffee --bare -o static/ precompile/",
+    "start": "node static/main.js"
   },
   "repository": "https://github.com/mikesmullin/borg",
   "author": "Mike Smullin <mike@smullindesign.com>",
   "license": "BSD",
+  "devDependencies": {
+    "chai": "~1.6.0",
+    "coffee-script": "~1.6.2",
+    "mocha": "~1.9.0"
+  },
   "dependencies": {
     "ssh2": "~0.2.5",
     "async2": "~0.1.7"

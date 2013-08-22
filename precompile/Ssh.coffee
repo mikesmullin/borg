@@ -1,7 +1,7 @@
 Ssh2 = require 'ssh2'
-Logger = require './logger'
+Logger = require './Logger'
 
-# TODO: color out put based on exit code. green if 0. else red
+# TODO: color output based on exit code. green if 0. else red
 
 module.exports = class Ssh
   constructor: (o, cb) ->
