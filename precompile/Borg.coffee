@@ -48,6 +48,7 @@ class Borg
 
   @cmd: (node, options, cb) ->
     #console.log arguments
+    if options.sudo then options.c = "sudo #{options.c}" # TODO: double-escape quotes, multiple commands, etc.
     new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, (err) ->
       Logger.out host: node.host, type: 'err', err if err
       cb err
