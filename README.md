@@ -23,3 +23,11 @@ borg help
 * push updates to nodes like Knife/Chef-Solo might, but automatically on cron, rather than auto-pull them the way Chef Client + Chef Server do.
 * support doing everything--bootstrap, cook, etc.--in parallel with single commands
 * support switch statements and cli-passed-environment-arg within node + role .js attribute configs
+* setup resources similar to chef but better:  
+* like the file resource; which should check for the presence of a line,  
+  and if its not there, add it  
+  or if its there, remove or replace it with a commented version
+* like template; which should let you compose the file content inline  
+  so as to be more convenient for lots of smaller files
+
+
