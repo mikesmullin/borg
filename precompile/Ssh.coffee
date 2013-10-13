@@ -15,7 +15,7 @@ module.exports = class Ssh
       Logger.out host: @host, 'ssh connected'
     @ssh.on 'ready', =>
       Logger.out host: @host, 'ssh authenticated'
-      cb null, @
+      cb()
     @ssh.on 'error', (err) =>
       Logger.out host: @host, "ssh error: #{err}"
     @ssh.on 'end', =>

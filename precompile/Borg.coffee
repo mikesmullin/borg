@@ -45,33 +45,33 @@ class Borg
   @rekey: (node, options, cb) ->
 
   @assimilate: (node, options, cb) ->
-    # load crap up
     path = require 'path'
-    process.cwd()
-    # config
-    global.node = {} # TODO: redefine this from git log in other repo
+    global.node =
+      default: f = (ns, v) ->
+        n = node
+        for k in ns.split '.'
+          n = n[k] ?= {}
+        n[k] = v
+        return
+      define: f
+      require: (ns, reason='') ->
+        n = node
+        for k in ns.split '.'
+          unless n[k]? then throw "Fatal: node.#{ns} is undefined. #{reason}"
+          n = n[k]
+        return true
+    require 'coffee-script'
     require path.join process.cwd(), 'config.coffee'
-    # machines
-    # TODO: decide how i will use module.exports along with globals; seems like i could have both, somehow
     global.machines = require path.join process.cwd(), 'machines.coffee'
-    # node
-    node = require path.join process.cwd(), 'nodes', "#{options.host}.coffee"
-    for inc in node.include
-      [type, path...] = inc.split '/'
-      # roles, modules, and vendor/modules, as included
-
-
-
-
-
-    new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, (err, ssh) ->
-      ssh.cmd 'id', ->
-        #if err then return Logger.out host: node.host, type: 'err', err
-        cb()
+    # connect
+    global.ssh = new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, ->
+      node = require path.join process.cwd(), 'nodes', "#{node.host}.coffee"
+      ssh.close()
+      cb()
 
   @cmd: (node, options, cb) ->
     #console.log arguments
-    new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, (err, ssh) ->
+    new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, ->
       #if err then return Logger.out host: node.host, type: 'err', err
       ssh.cmd options.cmd, (err) ->
         ssh.close()
