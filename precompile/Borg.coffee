@@ -42,13 +42,18 @@ class Borg
         #process.exit 0
 
   @rekey: (node, options, cb) ->
-    #new Ssh user: user, pass: pass, host: host, cmd: 'ping -c3 google.com', (err) ->
 
   @assimilate: (node, options, cb) ->
-    #new Ssh user: user, pass: pass, host: host, cmd: 'ping -c3 google.com', (err) ->
+    new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, (err, ssh) ->
+      Logger.out host: node.host, 'were in!'
+      #if err then return Logger.out host: node.host, type: 'err', err
+      cb()
 
   @cmd: (node, options, cb) ->
     #console.log arguments
-    new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, (err) ->
-      Logger.out host: node.host, type: 'err', err if err
-      cb err
+    new Ssh user: node.user, pass: node.pass, host: node.host, port: node.port, cmd: options.c, (err, ssh) ->
+      Logger.out host: node.host, 'were in!'
+      #if err then return Logger.out host: node.host, type: 'err', err
+      ssh.cmd options.cmd, (err) ->
+        ssh.close()
+        cb()
