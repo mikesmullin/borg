@@ -17,7 +17,6 @@ _.extend global,
     # TODO: support git and svn
     # TODO: support shared dir, cached-copy, and symlinking logs and other stuff
     # TODO: support keep_releases
-    console.log JSON.stringify args: arguments
     releases_dir = path.join o.deploy_to, 'releases'
     ssh.cmd "sudo mkdir -p #{releases_dir}", {}, ->
       out = ''
@@ -31,9 +30,16 @@ _.extend global,
           ssh.cmd "sudo chown -R #{o.user}.#{o.group} #{release_dir}", {}, ->
             ssh.cmd "sudo -u#{o.user} svn checkout --username #{o.svn_username} --password #{o.svn_password} #{o.repository} --revision #{current_revision} #{o.svn_arguments} #{release_dir}", {}, ->
               current_dir = path.join o.deploy_to, 'current'
-              ssh.cmd "[ -h #{current_dir} ] && sudo rm #{current_dir}; sudo ln -s #{release_dir} #{current_dir}", {}, ->
-                cb()
+              link release_dir, current_dir, cb
+
+  link: (src, target, cb) ->
+    ssh.cmd "[ -h #{target} ] && sudo rm #{target}; sudo ln -s #{src} #{target}", {}, cb
 
   put_file: (src, o, cb) ->
+    ssh.cmd "sudo touch #{o.target}", {}, cb
+
   put_template: (src, o, cb) ->
+    ssh.cmd "sudo touch #{o.target}", {}, cb
+
   cron: (name, o, cb) ->
+    cb()
