@@ -1,7 +1,10 @@
 _ = require 'underscore'
 _.extend global,
-  install: (packages) ->
-    console.log "would install #{packages}"
+  install: (packages, cb) ->
+    Logger.out 'installing packages'
+    ssh.cmd "sudo apt-get update", ->
+      ssh.cmd "sudo apt-get install -y #{packages}", ->
+        cb()
 
   execute: (cmd) ->
   deploy_revision: (name, o) ->

@@ -1,4 +1,4 @@
-Logger = require './Logger'
+global.Logger = require './Logger'
 Ssh    = require './Ssh'
 async = require 'async2'
 
@@ -69,9 +69,10 @@ class Borg
     global.machines = require path.join process.cwd(), 'machines.coffee'
     # connect
     global.ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, cmd: options.c, ->
+      global.assimilated = ->
+        ssh.close()
+        cb()
       node = require path.join process.cwd(), 'nodes', "#{target.host}.coffee"
-      ssh.close()
-      cb()
 
   @cmd: (target, options, cb) ->
     #console.log arguments

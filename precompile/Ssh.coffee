@@ -43,6 +43,7 @@ module.exports = class Ssh
         Logger.out host: @host, 'ssh stream closed'
       stream.on 'exit', (code, signal) =>
         Logger.out host: @host, "ssh stream exit. code: #{code}, signal: #{signal}"
+        cb code, signal
     return
 
   close: ->
