@@ -12,16 +12,22 @@ module.exports = class Ssh
     # connect
     Logger.out host: @host, 'ssh connecting...'
     @ssh.on 'connect', =>
-      Logger.out host: @host, 'ssh connected'
+      Logger.out 'ssh connected'
     @ssh.on 'ready', =>
-      Logger.out host: @host, 'ssh authenticated'
-      cb()
+      Logger.out 'ssh authenticated'
+      @ssh.sftp (err, sftp) =>
+        return cb err if err
+        @sftp = sftp
+        @sftp.on 'end', ->
+          Logger.out 'ssh sftp closed'
+        Logger.out 'ssh sftp session created'
+        cb()
     @ssh.on 'error', (err) =>
-      Logger.out host: @host, "ssh error: #{err}"
+      Logger.out "ssh error: #{err}"
     @ssh.on 'end', =>
-      Logger.out host: @host, 'ssh end'
+      Logger.out 'ssh end'
     @ssh.on 'close', =>
-      Logger.out host: @host, 'ssh close'
+      Logger.out 'ssh close'
     @ssh.connect
       host: @host
       port: @port
@@ -46,6 +52,9 @@ module.exports = class Ssh
         Logger.out host: @host, "ssh stream exit. code: #{code}, signal: #{signal}"
         cb code, signal
     return
+
+  put: (local, remote, cb) ->
+    @sftp.fastPut local, remote, cb
 
   close: ->
     @ssh.end()

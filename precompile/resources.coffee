@@ -1,6 +1,7 @@
 _ = require 'underscore'
 path = require 'path'
 async = require 'async2'
+crypto = require 'crypto'
 skip_if = (test, try_f, cb) -> if test then try_f(cb) else cb()
 _static = (k, v) -> if global[k] then false else global[k] = v
 _.extend global,
@@ -36,10 +37,16 @@ _.extend global,
     ssh.cmd "[ -h #{target} ] && sudo rm #{target}; sudo ln -s #{src} #{target}", {}, cb
 
   put_file: (src, o, cb) ->
-    ssh.cmd "sudo touch #{o.target}", {}, cb
+    tmp_file = path.join '/', 'tmp', crypto.createHash('sha1').update(''+ (new Date()) + Math.random()).digest('hex')
+    Logger.out "sftp local file #{src} to #{tmp_file}"
+    ssh.put src, tmp_file, (err) ->
+      return cb err if err
+      ssh.cmd "sudo chown #{o.user or 'root'}.#{o.user or 'root'} #{tmp_file}", {}, ->
+        ssh.cmd "sudo mv #{tmp_file} #{o.target}", {}, cb
 
   put_template: (src, o, cb) ->
-    ssh.cmd "sudo touch #{o.target}", {}, cb
+    # TODO: find out how to put a string via sftp
+    put_file src, o, cb
 
   cron: (name, o, cb) ->
     cb()
