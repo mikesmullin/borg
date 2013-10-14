@@ -65,7 +65,6 @@ class Borg
         return n[k]
     require './resources'
     require 'coffee-script'
-    debugger
     require path.join process.cwd(), 'config.coffee'
     global.machines = require path.join process.cwd(), 'machines.coffee'
     # connect

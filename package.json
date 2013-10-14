@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "ssh2": "~0.2.5",
-    "async2": "~0.1.7"
+    "async2": "~0.1.7",
+    "underscore": "~1.5.2"
   }
 }
