@@ -1,3 +1,0 @@
-roles are json files that group cookbooks
-nodes use roles to subscribe to grouped
-changes
