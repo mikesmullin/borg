@@ -29,7 +29,7 @@ module.exports = class Ssh
       password: @pass
     return
 
-  cmd: (cmd, cb) ->
+  cmd: (cmd, o, cb) ->
     return cb 'cmd is required' unless cmd
     Logger.out host: @host, type: 'info', "execute: #{cmd}"
     @ssh.exec cmd, (err, stream) =>
@@ -37,6 +37,7 @@ module.exports = class Ssh
       stream.on 'data', (data, extended) =>
         # TODO: color-code based on both stderr/stdout and the exit status code 0 or non-zero
         Logger.out host: @host, type: (if extended is 'stderr' then 'err' else 'recv'), data
+      stream.on 'data', o.data if typeof o.data is 'function'
       stream.on 'end', =>
         Logger.out host: @host, 'ssh stream eof'
       stream.on 'close', =>

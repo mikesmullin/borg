@@ -1,4 +1,9 @@
 global.Logger = require './Logger'
+global.die = (reason) ->
+  Logger.out type: 'err', reason
+  console.trace()
+  process.exit 1
+  return
 Ssh    = require './Ssh'
 async = require 'async2'
 
@@ -78,6 +83,6 @@ class Borg
     #console.log arguments
     new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, cmd: options.c, ->
       #if err then return Logger.out host: target.host, type: 'err', err
-      ssh.cmd options.cmd, (err) ->
+      ssh.cmd options.cmd, {}, (err) ->
         ssh.close()
         cb()

@@ -12,9 +12,13 @@ class Logger
       out: 'reset'
       recv: 'red'
       err: 'bright_red'
+    @host ||= o.host
+
+    pad = new Array(("#{new Date - @started}ms #{if @host then "#{@host} " else ""}#{if o.type is 'out' then '' else "[#{o.type}] "} ").length).join ' '
+    s = s.toString().replace(/\n/g, "\n"+pad) # pad w/ spaces
 
     process.stdout.write "#{Color.bright_white}#{new Date - @started}ms#{Color.reset} "+
-      "#{if o.host then "#{RainbowIndex o.host}#{o.host}#{Color.reset} " else ""}"+
+      "#{if @host then "#{RainbowIndex @host}#{@host}#{Color.reset} " else ""}"+
       "#{Color[o.type_color[o.type]]}#{if o.type is 'out' then '' else "[#{o.type}] "}#{Color.reset}"+
       "#{s}"+
       "#{if o.type is 'out' then "" else "\n"}"
