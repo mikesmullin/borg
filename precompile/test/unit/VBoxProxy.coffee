@@ -2,15 +2,15 @@ assert = require('chai').assert
 global.Logger = out: ->
 VBoxProxyClient = require '../../VBoxProxyClient'
 
-describe.only 'VBoxProxyClient', ->
+describe 'VBoxProxyClient', ->
   client = new VBoxProxyClient()
 
   it 'can connect', (done) ->
-    #client.connect '10.1.10.49', 4141, done()
-    client.connect 'localhost', 4141, done()
+    client.connect '10.1.10.49', 4141, done()
+    #client.connect 'localhost', 4141, done()
 
   it 'send commands', (done) ->
-    client.command ['/help'],
+    client.command ['help'],
       spawn: (pid) ->
         console.log 'pid', pid
       stdout: (data) ->
@@ -21,7 +21,7 @@ describe.only 'VBoxProxyClient', ->
         console.log 'error', err
       close: (code) ->
         console.log 'close', code
-        assert.equal code, -1
+        assert.equal code, 0
         done()
 
   it 'can disconnect', ->
