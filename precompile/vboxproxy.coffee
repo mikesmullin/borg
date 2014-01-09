@@ -39,6 +39,9 @@ server = net.createServer allowHalfOpen: false, (socket) =>
       console.log "stderr: #{data}"
       send socket, 'stderr', data, ->
       return
+    child.on 'error', (err) ->
+      console.log 'process error: '+ JSON.stringify err
+      return
     child.on 'close', (code) ->
       console.log "child process exited with code #{code}"
       return
