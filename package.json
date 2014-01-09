@@ -5,7 +5,7 @@
   "bin": "bin/borg",
   "main": "static/main.js",
   "scripts": {
-    "test": "cd precompile && mocha --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w test/unit/*.coffee",
+    "test": "cd precompile && mocha --timeout 10000 --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w test/unit/*.coffee",
     "integration-test": "cd precompile/test/integration && mocha --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w *.coffee",
     "prestart": "coffee --bare -o static/ precompile/",
     "start": "node static/main.js"
