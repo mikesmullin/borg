@@ -28,6 +28,5 @@ borg help
   and if its not there, add it  
   or if its there, remove or replace it with a commented version
 * like template; which should let you compose the file content inline  
-  so as to be more convenient for lots of smaller files
-
-
+  so as to be more convenient for lots of smaller files  
+* add kitchen-test, kitchen-vagrant, vagrant, ohai equivalents
