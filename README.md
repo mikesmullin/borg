@@ -30,3 +30,4 @@ borg help
 * like template; which should let you compose the file content inline  
   so as to be more convenient for lots of smaller files  
 * add kitchen-test, kitchen-vagrant, vagrant, ohai equivalents
+* ability to roll-back to 'clean' vbox snapshot for retry instead of import, and auto-take 'clean' snapshot on build, as well as make and rollback to manual cli snapshots
