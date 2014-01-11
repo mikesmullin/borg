@@ -21,6 +21,7 @@
   "dependencies": {
     "ssh2": "~0.2.5",
     "async2": "~0.1.7",
-    "lodash": "~2.4.1"
+    "lodash": "~2.4.1",
+    "sugar": "~1.4.1"
   }
 }

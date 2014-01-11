@@ -68,16 +68,16 @@ class Borg
           if n[k] is undefined then throw "Fatal: node.#{ns} is undefined. #{reason}"
           n = n[k]
         return n[k]
-    require './resources'
     require 'coffee-script'
-    require path.join process.cwd(), 'config.coffee'
-    global.machines = require path.join process.cwd(), 'machines.coffee'
+    require path.join process.cwd(), 'attributes', 'default'
+    node.networks = require path.join process.cwd(), 'attributes', 'networks'
     # connect
-    global.ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, cmd: options.c, ->
+    global.ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, ->
       global.assimilated = ->
         ssh.close()
         cb()
-      node = require path.join process.cwd(), 'nodes', "#{target.host}.coffee"
+      require path.join process.cwd(), 'servers', '_first'
+      #require path.join process.cwd(), 'servers', "#{target.host}.coffee"
 
   @cmd: (target, options, cb) ->
     #console.log arguments

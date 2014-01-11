@@ -1,33 +1,41 @@
 path = require 'path'
 _ = require 'lodash'
+require 'sugar'
 
 module.exports = ->
-  # import the machines array
+  # import the networks array
   require 'coffee-script'
-  machines = require path.join process.cwd(), 'machines.coffee'
-  {datacenters, clients, boxes} = machines
+  networks = require path.join process.cwd(), 'attributes', 'networks'
+  {datacenters, clients} = networks
   tld = 'animaljam.com'
 
   get_instance_attrs = (name) ->
     for datacenter, v of datacenters
-      for machine, vv of machines[datacenter] when not _.contains ['_default', 'runlist_before', 'runlist_after'], machine
+      for machine, vv of networks[datacenter] when not _.contains ['_default', 'nat_network'], machine
         for instance, vvv of vv when name is "#{machine}#{instance}" and not _.contains ['_default'], instance
           instance_attrs = {}
-          if machines[datacenter]._default?
-            instance_attrs = _.clone machines[datacenter]._default
-          if machines[datacenter][machine]._default?
-            instance_attrs = _.merge instance_attrs, machines[datacenter][machine]._default
+          if networks[datacenter]._default?
+            instance_attrs = _.clone networks[datacenter]._default
+          if networks[datacenter][machine]._default?
+            instance_attrs = _.merge instance_attrs, networks[datacenter][machine]._default
           instance_attrs = _.merge instance_attrs, vvv
-          instance_attrs._name = "#{datacenter}.#{machine}#{instance}.#{tld}"
-          instance_attrs._natnetwork = datacenter.underscored()
+          instance_attrs.environment ||= 'development'
+          instance_attrs.env = switch instance_attrs.environment
+            when 'production' then 'prod'
+            when 'staging' then 'stage'
+            when 'development' then 'dev'
+            else 'dev'
+          instance_attrs._name = "#{datacenter}.#{instance_attrs.env}.#{machine}#{instance}.#{tld}"
+          instance_attrs._natnetwork = datacenter.underscore()
           # TODO: generate random ssh port between 10-20k and save in process.cwd() .borgmeta. look there first to ensure not already assigned and unique. set in attrs.
-          instance_attrs._random_ssh_port
-          instance_attrs._ssh_nic_ip
-          instance_attrs._ssh_nic_port
+          instance_attrs._random_ssh_port = 1
+          instance_attrs._ssh_nic_ip = 1
+          instance_attrs._ssh_nic_port = 1
           return instance_attrs
     throw "cant find machine #{name}. check: borg test list"
 
-  vbox_conf = require path.join process.cwd(), 'virtualbox.coffee'
+  vbox_conf = require path.join process.cwd(), 'attributes', 'virtualbox'
+  { boxes } = vbox_conf
   VBoxProxyClient = require './VBoxProxyClient'
   client = new VBoxProxyClient()
   vboxmanage = (args, cb) ->
@@ -60,7 +68,7 @@ module.exports = ->
   switch process.argv[3]
     when 'list'
       for datacenter, v of datacenters
-        for machine, vv of machines[datacenter] when not _.contains ['_default', 'runlist_before', 'runlist_after'], machine
+        for machine, vv of networks[datacenter] when not _.contains ['_default', 'nat_network'], machine
           for instance, vvv of vv when not _.contains ['_default'], instance
             attrs = get_instance_attrs "#{machine}#{instance}"
             console.log attrs._name
@@ -73,21 +81,21 @@ module.exports = ->
       vboxmanage ['import', boxes[attrs.box].path, '--vsys', 0, '--ostype', 'Ubuntu_64', '--vmname',
         attrs._name, '--cpus', attrs.cpus, '--memory', attrs.memory, '--unit', 4, '--ignore'], ->
 
-        # create natnetwork
-        natnetwork = datacenter.underscored()
-        vboxmanage [ 'natnetwork', 'add', '-t', attrs._natnetwork, '-n', '172.16/16', '-e', '-h', 'on' ], ->
-        # TODO: add IF statements around all these lines
-        vboxmanage [ 'setextradata', 'global', "NAT/#{attrs._natnetwork}/SourceIp4", '172.16.0.1' ], ->
+        ## create natnetwork
+        #natnetwork = datacenter.underscored()
+        #vboxmanage [ 'natnetwork', 'add', '-t', attrs._natnetwork, '-n', '172.16/16', '-e', '-h', 'on' ], ->
+        ## TODO: add IF statements around all these lines
+        #vboxmanage [ 'setextradata', 'global', "NAT/#{attrs._natnetwork}/SourceIp4", '172.16.0.1' ], ->
 
-        # nic type: unassigned
-        vboxmanage [ 'modifyvm', attrs._name, '--nic1', 'null', '--cableconnected1', 'off' ], ->
-        vboxmanage [ 'modifyvm', attrs._name, '--nic2', 'null', '--cableconnected2', 'off' ], ->
+        ## nic type: unassigned
+        #vboxmanage [ 'modifyvm', attrs._name, '--nic1', 'null', '--cableconnected1', 'off' ], ->
+        #vboxmanage [ 'modifyvm', attrs._name, '--nic2', 'null', '--cableconnected2', 'off' ], ->
 
-        # nic type: natnetwork
-        vboxmanage [ 'modifyvm', attrs._name, '--nic2', 'natnetwork', '--nat-network2', attrs._natnetwork, '--cableconnected2', 'on' ], ->
+        ## nic type: natnetwork
+        #vboxmanage [ 'modifyvm', attrs._name, '--nic2', 'natnetwork', '--nat-network2', attrs._natnetwork, '--cableconnected2', 'on' ], ->
 
-        # port forward
-        vboxmanage [ 'natnetwork', 'modify', '-t', attrs._natnetwork, '-p', "ssh:tcp:[]:#{attrs._random_ssh_port}:[#{attrs._ssh_nic_ip}]:#{attrs._ssh_nic_port}" ], ->
+        ## port forward
+        #vboxmanage [ 'natnetwork', 'modify', '-t', attrs._natnetwork, '-p', "ssh:tcp:[]:#{attrs._random_ssh_port}:[#{attrs._ssh_nic_ip}]:#{attrs._ssh_nic_port}" ], ->
 
         # start the machine backgrounded
         vboxmanage ['startvm', attrs._name], -> #, '--type', 'headless'], ->
