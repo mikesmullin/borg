@@ -9,30 +9,36 @@ module.exports = ->
   {datacenters, clients} = networks
   tld = 'animaljam.com'
 
-  get_instance_attrs = (name) ->
+  each_machine_instance = (cb) ->
     for datacenter, v of datacenters
       for machine, vv of networks[datacenter] when not _.contains ['_default', 'nat_network'], machine
-        for instance, vvv of vv when name is "#{machine}#{instance}" and not _.contains ['_default'], instance
-          instance_attrs = {}
-          if networks[datacenter]._default?
-            instance_attrs = _.clone networks[datacenter]._default
-          if networks[datacenter][machine]._default?
-            instance_attrs = _.merge instance_attrs, networks[datacenter][machine]._default
-          instance_attrs = _.merge instance_attrs, vvv
-          instance_attrs.environment ||= 'development'
-          instance_attrs.env = switch instance_attrs.environment
-            when 'production' then 'prod'
-            when 'staging' then 'stage'
-            when 'development' then 'dev'
-            else 'dev'
-          instance_attrs._name = "#{datacenter}.#{instance_attrs.env}.#{machine}#{instance}.#{tld}"
-          instance_attrs._natnetwork = datacenter.underscore()
-          # TODO: generate random ssh port between 10-20k and save in process.cwd() .borgmeta. look there first to ensure not already assigned and unique. set in attrs.
-          instance_attrs._random_ssh_port = 1
-          instance_attrs._ssh_nic_ip = 1
-          instance_attrs._ssh_nic_port = 1
-          return instance_attrs
-    throw "cant find machine #{name}. check: borg test list"
+        for instance, vvv of vv when not _.contains ['_default'], instance
+          return if false is cb datacenter: datacenter, machine: machine, instance: instance
+
+  get_instance_attrs = (name) ->
+    instance_attrs = null
+    each_machine_instance ({ datacenter, machine, instance }) ->
+      if name is "#{machine}#{instance}"
+        instance_attrs = {}
+        if networks[datacenter]._default?
+          instance_attrs = _.clone networks[datacenter]._default
+        if networks[datacenter][machine]._default?
+          instance_attrs = _.merge instance_attrs, networks[datacenter][machine]._default
+        instance_attrs = _.merge instance_attrs, networks[datacenter][machine][instance]
+        instance_attrs.environment ||= 'development'
+        instance_attrs.env = switch instance_attrs.environment
+          when 'production' then 'prod'
+          when 'staging' then 'stage'
+          when 'development' then 'dev'
+          else 'dev'
+        instance_attrs._name = "#{datacenter}.#{instance_attrs.env}.#{machine}#{instance}.#{tld}"
+        instance_attrs._natnetwork = datacenter.underscore()
+        # TODO: generate random ssh port between 10-20k and save in process.cwd() .borgmeta. look there first to ensure not already assigned and unique. set in attrs.
+        instance_attrs._random_ssh_port = 1
+        instance_attrs._ssh_nic_ip = 1
+        instance_attrs._ssh_nic_port = 1
+        return false
+    return instance_attrs or throw "cant find machine #{name}. check: borg test list"
 
   vbox_conf = require path.join process.cwd(), 'attributes', 'virtualbox'
   { boxes } = vbox_conf
@@ -67,11 +73,9 @@ module.exports = ->
 
   switch process.argv[3]
     when 'list'
-      for datacenter, v of datacenters
-        for machine, vv of networks[datacenter] when not _.contains ['_default', 'nat_network'], machine
-          for instance, vvv of vv when not _.contains ['_default'], instance
-            attrs = get_instance_attrs "#{machine}#{instance}"
-            console.log attrs._name
+      each_machine_instance ({ datacenter, machine, instance }) ->
+        attrs = get_instance_attrs "#{machine}#{instance}"
+        console.log attrs._name
 
     when 'create'
       attrs = get_instance_attrs process.argv[4]
