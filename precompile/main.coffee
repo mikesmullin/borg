@@ -1,8 +1,9 @@
-Borg = require './Borg'
-
 switch cmd = process.argv[2]
   when 'rekey', 'assimilate', 'cmd'
+    Borg = require './Borg'
     Borg cmd
+  when 'test'
+    (require './Test')()
   when '-V', '--version', 'version'
     pkg = require '../package.json'
     console.log """
@@ -41,6 +42,28 @@ switch cmd = process.argv[2]
           -c=<shell_command>  command to execute
 
         """
+      when 'test'
+        switch process.argv[4]
+          when 'list' then 1
+          #when 'create'
+          #when 'assimilate'
+          #when 'use'
+          #when 'login'
+          #when 'destroy'
+          else
+            console.log """
+            Usage: borg test <subcommand>
+
+            Subcommands:
+
+              list                list all machines
+              create              create localhost virtualbox machine
+              assimilate          assimilate the localhost vm
+              use                 test successful assimilation
+              login               open ssh session
+              destroy             delete localhost vm
+
+            """
       else
         console.log """
         Usage: borg <command> [options] <host ...>
@@ -50,6 +73,7 @@ switch cmd = process.argv[2]
           rekey       copy ssh public key to authorized_hosts on remote host(s)
           assimilate  bootstrap and cook remote host(s)
           cmd         bulk execute command on remote host(s)
+          test        simulate assimilation on localhost
 
         Options:
 

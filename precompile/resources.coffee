@@ -1,10 +1,10 @@
-_ = require 'underscore'
+_ = require 'lodash'
 path = require 'path'
 async = require 'async2'
 crypto = require 'crypto'
 skip_if = (test, try_f, cb) -> if test then try_f(cb) else cb()
 _static = (k, v) -> if global[k] then false else global[k] = v
-_.extend global,
+_.assign global,
   install: (packages, o, cb) ->
     return cb()
     skip_if _static('__apt_update_happened', true),
