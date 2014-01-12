@@ -82,7 +82,7 @@ class Borg
         cb()
       require path.join process.cwd(), 'scripts', 'vendor', 'resources'
       require path.join process.cwd(), 'scripts', 'first'
-      #require path.join process.cwd(), 'servers', "#{target.host}.coffee"
+      require path.join process.cwd(), 'servers', "#{target.host}.coffee"
       require path.join process.cwd(), 'scripts', 'last'
 
   @cmd: (target, options, cb) ->
