@@ -103,9 +103,6 @@ module.exports = ->
         nat_network._name = "#{attrs.datacenter}_#{name}".underscore()
         flow.serial (next) ->
           vboxmanage [ 'natnetwork', 'add', '-t', nat_network._name, '-n', nat_network.cidr, '-e', '-h', (nat_network.dhcp or 'on') ], next
-        #if nat_network.dhcp_server?
-        #  flow.serial (next) ->
-        #    vboxmanage [ 'setextradata', 'global', "NAT/#{nat_network._name}/SourceIp4", nat_network.dhcp_server ], next
         # configure natnetwork ssh port forward
         if nat_network.ssh_port_forward is true and attrs._random_ssh_port and attrs._ssh_nic_ip and attrs._ssh_nic_port
           flow.serial (next) ->
