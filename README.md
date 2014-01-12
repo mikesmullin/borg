@@ -4,6 +4,8 @@ Automated provisioning and deployment with Node.JS.
 
 ![Example Screenshot](https://raw.github.com/mikesmullin/borg/master/docs/example.png)
 
+Browse public borg script repositories: https://github.com/borg-scripts
+
 ## Installation
 
 ```bash
