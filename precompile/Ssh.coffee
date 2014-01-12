@@ -7,13 +7,15 @@ module.exports = class Ssh
     return cb 'pass is required' unless @pass = o.pass
     @user = o.user || `whoami`
     @port = o.port || 22
-    @ssh  = new Ssh2()
+    @connect cb
+    return
 
-    # connect
+  connect: (cb) ->
     Logger.out host: @host, 'ssh connecting...'
-    @ssh.on 'connect', =>
+    @ssh  = new Ssh2()
+    @ssh.once 'connect', =>
       Logger.out 'ssh connected'
-    @ssh.on 'ready', =>
+    @ssh.once 'ready', =>
       Logger.out 'ssh authenticated'
       @ssh.sftp (err, sftp) =>
         return cb err if err
