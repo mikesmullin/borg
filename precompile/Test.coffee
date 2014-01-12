@@ -3,51 +3,9 @@ _ = require 'lodash'
 require 'sugar'
 async = require 'async2'
 delay = (s, f) -> setTimeout f, s
+{networks, datacenters, clients, each_machine_instance, get_instance_attrs} = require './Network'
 
 module.exports = ->
-  # import the networks array
-  require 'coffee-script'
-  networks = require path.join process.cwd(), 'attributes', 'networks'
-  {datacenters, clients} = networks
-  tld = 'animaljam.com'
-
-  each_machine_instance = (cb) ->
-    for datacenter, v of datacenters
-      for machine, vv of networks[datacenter] when not _.contains ['_default', 'nat_networks'], machine
-        for instance, vvv of vv when not _.contains ['_default'], instance
-          return if false is cb datacenter: datacenter, machine: machine, instance: instance
-
-  get_instance_attrs = (name) ->
-    # TODO: match name as regex
-    attrs = null
-    each_machine_instance ({ datacenter, machine, instance }) ->
-      if name is "#{machine}#{instance}"
-        attrs = {}
-        if networks[datacenter]._default?
-          attrs = _.clone networks[datacenter]._default
-        if networks[datacenter][machine]._default?
-          attrs = _.merge attrs, networks[datacenter][machine]._default
-        attrs = _.merge attrs, networks[datacenter][machine][instance]
-        attrs.datacenter = datacenter
-        attrs.machine = machine
-        attrs.instance = instance
-        attrs.environment ||= 'development'
-        attrs.env = switch attrs.environment
-          when 'production' then 'prod'
-          when 'staging' then 'stage'
-          when 'development' then 'dev'
-          else 'dev'
-        attrs._name = "#{datacenter}.#{attrs.env}.#{machine}#{instance}.#{tld}"
-        _.each [0, 1, 2, 3], (i) ->
-          if attrs.network["eth#{i}"]?.ssh_port_forward is true and attrs.network["eth#{i}"].address?
-            # TODO: generate random ssh port between 10-20k and save in process.cwd() .borgmeta. look there first to ensure not already assigned and unique. set in attrs.
-            attrs._random_ssh_port = 22202
-            attrs._ssh_nic_ip = attrs.network["eth#{i}"].address
-            attrs._ssh_nic_port = 22
-            return false
-        return false
-    return attrs or throw "cant find machine #{name}. check: borg test list"
-
   vbox_conf = require path.join process.cwd(), 'attributes', 'virtualbox'
   { boxes } = vbox_conf
   VBoxProxyClient = require './VBoxProxyClient'
