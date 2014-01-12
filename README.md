@@ -1,10 +1,40 @@
 # Borg
 
-Chef/Puppet-like automated provisioning and deployment with CoffeeScript and Node.JS.
+Combines and simplifies several popular automated devops, server orchestration, provisioning, and deployment tools into one.
 
 ![Example Screenshot](https://raw.github.com/mikesmullin/borg/master/docs/example.png)
 
-Browse public borg script repositories: https://github.com/borg-scripts
+
+## What makes Borg different?
+Popular features that grew on [Chef](http://www.getchef.com/chef/) out of necessity are now the foundation of Borg, with improvements:
+* Client and command-line driven management similar to [knife-solo](https://github.com/matschaffer/knife-solo)
+* Interactive command-line debugging of every level; similar to [Pry](https://github.com/nixme/pry-debugger)
+* Test-driven development similar to [test-kitchen](https://github.com/test-kitchen/test-kitchen) with [Vagrant](http://vagrantup.com) and [VirtualBox](https://www.virtualbox.org/)
+* Define machines, datacenters, and environments in a _single_ [DRY](http://en.wikipedia.org/wiki/Don't_repeat_yourself) [CSON](https://github.com/bevry/cson) format that is always in-scope
+* [Ruby](http://www.ruby.org)-inspired scripting simplicity of [CoffeeScript](http://www.coffeescript.org)
+* Speed and asynchronous I/O of [Node.JS](http://www.nodejs.org)
+* Simple yet more powerful flow control; [similar](https://gist.github.com/mikesmullin/8379744) to [Q.fcall()](https://github.com/kriskowal/q)
+* Designed to operate on several machines at once in *parallel*.
+* Code execution happens client-side. Remote machine *only needs SSH* w/ SFTP enabled.
+* No remote bootstrap step necessary; experience faster, less frustrating dev-test cycles.
+* Organize and `require()` equivalent of roles, recipes, attributes, et cetera like any other [CommonJS module](http://dailyjs.com/2010/10/18/modules/).
+* Manage dependencies with [npm](https://npmjs.org/) and 
+
+### Clever analogous parlance:
+Since Chef debuted in 2009, community contributions have saturated the culinary namespace. Before we take over Google for anything [Star Trek](http://en.wikipedia.org/wiki/Star_Trek:_The_Next_Generation) related, let's agree not to glorify or obfuscate otherwise simple and well-known definitions of things:
+
+* "**Chef**" inspired "**Borg**"
+* "**cookbook**" or "recipe" now simply "**script**"; organize directories how you like
+* "**site-cookbooks/**" now "**scripts/**". likewise "**cookbooks/**" is now "**scripts/vendor/**"
+* "**resource**" now "**global function**"
+* "**node** or **role**" now just "**server**"; with logic to define conditions.
+* "**Berkshelf**" currently simply "**git submodule**"
+
+### Browsing public contributions
+
+Official scripts: https://github.com/borg-scripts
+
+Community scripts can ask to be added to the github organization above or you can host your own. 
 
 ## Installation
 
