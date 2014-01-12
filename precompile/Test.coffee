@@ -106,7 +106,7 @@ module.exports = ->
         # configure natnetwork ssh port forward
         if nat_network.ssh_port_forward is true and attrs._random_ssh_port and attrs._ssh_nic_ip and attrs._ssh_nic_port
           flow.serial (next) ->
-            vboxmanage [ 'natnetwork', 'modify', '-t', nat_network._name, '-p', "ssh:tcp:[]:#{attrs._random_ssh_port}:[#{attrs._ssh_nic_ip}]:#{attrs._ssh_nic_port}" ], next
+            vboxmanage [ 'natnetwork', 'modify', '-t', nat_network._name, '-p', "ssh:tcp:[#{vbox_conf.host}]:#{attrs._random_ssh_port}:[#{attrs._ssh_nic_ip}]:#{attrs._ssh_nic_port}" ], next
 
       # configure interface(s)
       _.each [0, 1, 2, 3], (i) ->

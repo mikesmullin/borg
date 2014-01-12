@@ -42,7 +42,7 @@ module.exports = class Ssh
       return cb err if err
       stream.on 'data', (data, extended) =>
         # TODO: color-code based on both stderr/stdout and the exit status code 0 or non-zero
-        Logger.out host: @host, type: (if extended is 'stderr' then 'err' else 'recv'), data
+        Logger.out host: @host, type: (if extended is 'stderr' then 'stderr' else 'stdio'), data
       stream.on 'data', o.data if typeof o.data is 'function'
       stream.on 'end', =>
         Logger.out host: @host, 'ssh stream eof'
@@ -50,7 +50,7 @@ module.exports = class Ssh
         Logger.out host: @host, 'ssh stream closed'
       stream.on 'exit', (code, signal) =>
         Logger.out host: @host, "ssh stream exit. code: #{code}, signal: #{signal}"
-        cb code, signal
+        cb code, signal if typeof cb is 'function'
     return
 
   put: (local, remote, cb) ->

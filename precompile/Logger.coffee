@@ -10,8 +10,8 @@ class Logger
     o.type_color =
       info: 'yellow'
       out: 'reset'
-      recv: 'red'
-      err: 'bright_red'
+      stdio: 'magenta'
+      stderr: 'bright_red'
     @host ||= o.host
 
     pad = new Array(("#{new Date - @started}ms #{if @host then "#{@host} " else ""}#{if o.type is 'out' then '' else "[#{o.type}] "} ").length).join ' '

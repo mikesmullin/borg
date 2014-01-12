@@ -42,10 +42,10 @@ class Borg
       if err
         #process.stderr.write err+"\n"
         Logger.out 'aborted with error.'
-        #process.exit 1
+        process.exit 1
       else
         Logger.out 'all done.'
-        #process.exit 0
+        process.exit 0
 
   @rekey: (target, options, cb) ->
 
