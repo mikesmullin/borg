@@ -47,6 +47,7 @@ module.exports = Network =
       # continue parsing attributes
       _.each [0, 1, 2, 3], (i) ->
         if attrs.network["eth#{i}"]?.ssh_port_forward is true and attrs.network["eth#{i}"].address?
+          attrs.private_ip ||= attrs.network["eth#{i}"].address if attrs.network["eth#{i}"].private is true
           # TODO: generate random ssh port between 10-20k and save in process.cwd() .borgmeta. look there first to ensure not already assigned and unique. set in attrs.
           attrs._random_ssh_port = 22202
           attrs._ssh_nic_ip = attrs.network["eth#{i}"].address

@@ -7,7 +7,7 @@ global.die = (reason) ->
 Ssh    = require './Ssh'
 async = require 'async2'
 _ = require 'lodash'
-global.Que = require './Que'
+global.Q = (require './Que').new()
 
 # TODO: support:
 # borg cmd --sudo u:p@localhost:223 -- test blah
@@ -71,7 +71,7 @@ class Borg
           n = n[k]
         return n[k]
     require 'coffee-script'
-    {networks, get_instance_attrs} = require './Network'
+    {networks, get_instance_attrs} = global.Network = require './Network'
     global.node.networks = networks
     global.node = _.merge global.node, attrs = get_instance_attrs target.host
     require path.join process.cwd(), 'attributes', 'default'
@@ -80,8 +80,10 @@ class Borg
       global.assimilated = ->
         ssh.close()
         cb()
-      require path.join process.cwd(), 'servers', '_first'
+      require path.join process.cwd(), 'scripts', 'vendor', 'resources'
+      require path.join process.cwd(), 'scripts', 'first'
       #require path.join process.cwd(), 'servers', "#{target.host}.coffee"
+      require path.join process.cwd(), 'scripts', 'last'
 
   @cmd: (target, options, cb) ->
     #console.log arguments

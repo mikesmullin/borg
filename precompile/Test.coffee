@@ -41,7 +41,7 @@ module.exports = ->
 
   switch process.argv[3]
     when 'list'
-      each_machine_instance ({ datacenter, machine, instance }) ->
+      each_machine_instance ({ machine, instance }) ->
         attrs = get_instance_attrs "#{machine}#{instance}"
         console.log attrs._name
 
