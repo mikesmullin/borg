@@ -19,7 +19,7 @@ Popular features that grew on [Chef](http://www.getchef.com/chef/) out of necess
 * Code execution happens client-side. Remote machine *only needs SSH* w/ SFTP enabled.
 * No remote bootstrap step necessary; experience faster, less frustrating dev-test cycles.
 * Organize and `require()` equivalent of roles, recipes, attributes, et cetera like any other [CommonJS module](http://dailyjs.com/2010/10/18/modules/).
-* Manage dependencies with [npm](https://npmjs.org/) and 
+* Manage dependencies with [npm](https://npmjs.org/) and [git](http://git-scm.com/) submodules.
 
 ### Clever analogous parlance:
 Since Chef debuted in 2009, community contributions have saturated the culinary namespace. Before we take over Google for anything [Star Trek](http://en.wikipedia.org/wiki/Star_Trek:_The_Next_Generation) related, let's agree not to glorify or obfuscate otherwise simple and well-known definitions of things:
