@@ -4,6 +4,7 @@ Combines and simplifies several popular automated devops, server orchestration, 
 
 ![Example Screenshot](https://raw.github.com/mikesmullin/borg/master/docs/example.png)
 
+Watch the 20min video intro to see it in action: http://youtu.be/Fukd0Rbd7UQ
 
 ## What makes Borg different?
 Popular features that grew on [Chef](http://www.getchef.com/chef/) out of necessity are now the foundation of Borg, with improvements:
