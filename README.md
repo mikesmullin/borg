@@ -44,7 +44,10 @@ npm install -g borg
 borg help
 ```
 
-## TODO
+## Planned Features
+
+A handful of these these are 90% implemented, but meh I'll clean this up later.
+
 * bulk copy keys to new machines (without known_hosts warning, or password prompts)
 * allow bulk less -F (aggregate, concat, colorize) with prefixed hostnames to scan log files
 * pause cookbook script and debug interactively during a deploy from REPL
