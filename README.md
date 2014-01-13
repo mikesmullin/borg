@@ -25,7 +25,7 @@ Popular features that grew on [Chef](http://www.getchef.com/chef/) out of necess
 Since Chef debuted in 2009, community contributions have saturated the culinary namespace. Before we take over Google for anything [Star Trek](http://en.wikipedia.org/wiki/Star_Trek:_The_Next_Generation) related, let's agree not to glorify or obfuscate otherwise simple and well-known definitions of things:
 
 * "**Chef**" inspired "**Borg**"
-* "**cookbook**" or "recipe" now simply "**script**"; organize directories how you like
+* "**cookbook**" or "**recipe**" now simply "**script**"; organize directories how you like
 * "**site-cookbooks/**" now "**scripts/**". likewise "**cookbooks/**" is now "**scripts/vendor/**"
 * "**resource**" now "**global function**"
 * "**node** or **role**" now just "**server**"; with logic to define conditions.
