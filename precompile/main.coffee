@@ -33,13 +33,7 @@ switch cmd = process.argv[2]
         """
       when 'cmd'
         console.log """
-        Usage: borg command [options] <user:password@host ...>
-
-        Options:
-
-          --sudo              use `sudo -i`
-          -u=<user>           use `sudo -iu`
-          -c=<shell_command>  command to execute
+        Usage: borg cmd options] <user:password@host ...> -- <shell_command>
 
         """
       when 'test'

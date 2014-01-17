@@ -21,18 +21,20 @@ class Borg
     options = {}
     args = []
     last_option = null
-    for arg in process.argv.slice(3)
+    for arg, ii in process.argv.slice 3
       if match = arg.match(/^(.+?)(:(.+))?@(.+?)(:(.+))?$/)
         targets.push user: match[1], pass: match[3], host: match[4], port: match[6]
       else
-        if arg[0] is '-'
+        if arg is '--'
+          options.eol = process.argv.slice(ii+4).join ' '
+          break
+        else if arg[0] is '-'
           options[last_option = arg.split(/^--?/)[1]] = true
         else if last_option isnt null
-          options[last_option] = arg
+          options[last_option] += ' '+arg
           last_option = null
         else
           args.push arg
-    if options.sudo then options.c = "sudo #{options.c}" # TODO: double-escape quotes, multiple commands, etc.
     #console.log cmd: cmd, targets: targets, options: options, args: args
     flow = new async
     for own k, target of targets
@@ -87,8 +89,8 @@ class Borg
 
   @cmd: (target, options, cb) ->
     #console.log arguments
-    new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, cmd: options.c, ->
+    ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, ->
       #if err then return Logger.out host: target.host, type: 'err', err
-      ssh.cmd options.cmd, {}, (err) ->
+      ssh.cmd options.eol, {}, (err) ->
         ssh.close()
         cb()
