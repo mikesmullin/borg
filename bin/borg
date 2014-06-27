@@ -1,9 +1,19 @@
 #!/usr/bin/env bash
-if [ $1 == 'debug' ]
+if [[ $1 == 'debug' ]]
 then
   shift
-  killall -9 node
-  slnode debug -s start.js $* # strongloop + blink debugger
+  rm -f libpeerconnection.log
+  # kill any other process listening on the debug ports
+  for port in $(echo 8080 5858); do
+    lsof -i tcp:${port} | grep LISTEN | awk '{print $2}' | xargs kill >/dev/null 2>&1
+  done
+  # node-inspector and coffee should start before google-chrome is finished loading
+  google-chrome http://127.0.0.1:8080/debug?port=5858 >/dev/null 2>&1 &
+  # NOTICE: capturing the breakpoints you set in code with `debugger` statement is tricky;
+  #         the first breakpoint will always be the coffee-script core. the second breakpoint
+  #         will appear to also be within coffee-script core, but actually its the first
+  #         breakpoint _you_ set, if any. in order to see that you have to 'Step over' once.
+  node-inspector & coffee --nodejs --debug-brk start.coffee $*
 else
-  node start.js $*
+  coffee start.coffee $*
 fi
