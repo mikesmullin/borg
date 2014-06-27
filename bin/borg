@@ -13,7 +13,13 @@ then
   #         the first breakpoint will always be the coffee-script core. the second breakpoint
   #         will appear to also be within coffee-script core, but actually its the first
   #         breakpoint _you_ set, if any. in order to see that you have to 'Step over' once.
-  node-inspector & coffee --nodejs --debug-brk start.coffee $*
+  node-inspector & coffee --nodejs --debug-brk $*
 else
-  coffee start.coffee $*
+  # NOTICE: expects user to name the .coffee script to run.
+  #         therefore this script does nothing other than reserve the borg executable namespace
+  #         on the user's system, and makes debugging easier.
+  # NOTICE: if you are using borg in cli mode, instead of as a library for some larger application,
+  #         the .coffee script named must have the following line at the top:
+  #         require 'borg/cli'
+  coffee $*
 fi
