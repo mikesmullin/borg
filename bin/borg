@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-if [[ $1 == 'debug' ]]
-then
+if [[ $1 == 'debug' ]]; then
   shift
   rm -f libpeerconnection.log
   # kill any other process listening on the debug ports
@@ -15,6 +14,10 @@ then
   #         breakpoint _you_ set, if any. in order to see that you have to 'Step over' once.
   node-inspector & coffee --nodejs --debug-brk $*
 else
+  if [[ $# -eq 0 ]]; then
+    echo "You must specify a .coffee file to evaluate as the first argument."
+    exit 1
+  fi
   # NOTICE: expects user to name the .coffee script to run.
   #         therefore this script does nothing other than reserve the borg executable namespace
   #         on the user's system, and makes debugging easier.
