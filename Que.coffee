@@ -1,3 +1,4 @@
+# oversimplified asynchronous flow control
 module.exports = new: ->
   Q = []
   Q.then = (fn, args...) -> Q.push(-> args.push Q.next; fn.apply null, args); @
