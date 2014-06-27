@@ -11,7 +11,7 @@
   },
   "repository": "https://github.com/mikesmullin/borg",
   "author": "Mike Smullin <mike@smullindesign.com>",
-  "license": "BSD",
+  "license": "GPLv2",
   "devDependencies": {
     "chai": "~1.6.0",
     "coffee-script": "~1.6.2",
