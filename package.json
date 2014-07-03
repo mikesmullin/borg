@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "description": "Automated provisioning and deployment with Node.JS.",
   "bin": "bin/borg",
-  "main": "cli.coffee",
+  "main": "Borg.coffee",
   "scripts": {
     "test": "mocha --timeout 10000 --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w test/unit/*.coffee",
     "integration-test": "cd test/integration && mocha --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w *.coffee",

@@ -1,6 +1,6 @@
 switch cmd = process.argv[2]
   when 'rekey', 'assimilate', 'cmd'
-    Borg = require './Borg'
+    Borg = require './index'
     Borg cmd
   when 'test'
     (require './Test')()
