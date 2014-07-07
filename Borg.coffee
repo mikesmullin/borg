@@ -92,6 +92,10 @@ class Borg
   # api / cli
   assimilate: ({user, key, pass, host, port, scripts, locals}, cb) ->
     port ||= 22
+    locals.ssh =
+      user: user
+      host: host
+      port: port
 
     # load server attributes for named host
     @reloadAttributes host, locals
