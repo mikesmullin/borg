@@ -67,9 +67,9 @@ class Borg
     @import 'attributes', 'default'
     # find server matching pattern, override server attributes with matching network instance attributes
     @eachServer ({ datacenter, type, instance }) =>
-      console.log dc: datacenter, t: type, i: instance, pattern: pattern
+      #console.log dc: datacenter, t: type, i: instance, pattern: pattern
       server = @getServerAttributes datacenter, type, instance, {}
-      console.log server: server
+      #console.log server: server, locals: locals
       # skip unless pattern matches
       return unless pattern is server.fqdn or # exact string match
         null isnt (new RegExp(pattern)).exec(server.fqdn) # regex match
