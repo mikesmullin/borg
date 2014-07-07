@@ -4,7 +4,7 @@ Logger = require './Logger'
 module.exports = class Ssh
   constructor: (o, cb) ->
     return cb 'host is required' unless @host = o.host
-    return cb 'pass is required' unless @pass = o.pass
+    return cb 'pass or key is required' unless (@pass = o.pass) or (@key = o.key)
     @user = o.user || `whoami`
     @port = o.port || 22
     @connect cb
@@ -35,6 +35,7 @@ module.exports = class Ssh
       port: @port
       username: @user
       password: @pass
+      privateKey: @key
     return
 
   cmd: (cmd, o, cb) ->
