@@ -72,7 +72,14 @@ class Borg
       #console.log server: server, locals: locals
       # skip unless pattern matches
       return unless pattern is server.fqdn or # exact string match
-        null isnt (new RegExp(pattern)).exec(server.fqdn) # regex match
+        null isnt (new RegExp(pattern)).exec(server.fqdn) or # regex match
+        ( # locals match
+          locals.datacenter is server.datacenter and
+          locals.environment is server.environment and
+          locals.type is server.type and
+          locals.instance is server.instance and
+          locals.tld is server.tld
+        )
       # found match
       server = @getServerAttributes datacenter, type, instance, locals
       @server = _.merge @server, server
