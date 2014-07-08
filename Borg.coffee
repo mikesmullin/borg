@@ -1,12 +1,14 @@
 path = require 'path'
 _ = require 'lodash'
+require 'sugar'
+Logger = require './Logger'
 
 module.exports =
 class Borg
   # process
-  log: (require './Logger').out
+  log: -> Logger.out.apply Logger, arguments
   die: (reason) ->
-    @log type: 'err', "ERROR: "+reason
+    @log type: 'err', reason
     console.trace()
     process.exit 1
     return
@@ -132,7 +134,7 @@ class Borg
       # finish and execute chain
       @finally =>
         @ssh.close()
-        cb null
+        setTimeout (-> cb null), 100
 
 
 

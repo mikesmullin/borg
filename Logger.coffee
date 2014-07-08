@@ -2,16 +2,22 @@ module.exports =
 class Logger
   @started: new Date
   @out: ->
-    o = {}
     switch arguments.length
-      when 2 then [o, s] = arguments
+      when 2
+        if typeof arguments[arguments.length-1] is 'function'
+          [s, cb] = arguments
+        else
+          [o, s] = arguments
       when 1 then [s] = arguments
+    o ||= {}
     o.type ||= 'info'
     o.type_color =
       info: 'yellow'
       out: 'reset'
-      stdio: 'magenta'
+      stdin: 'cyan'
+      stdout: 'magenta'
       stderr: 'bright_red'
+      err: 'bright_red'
     @host ||= o.host
 
     pad = new Array(("#{new Date - @started}ms #{if @host then "#{@host} " else ""}#{if o.type is 'out' then '' else "[#{o.type}] "} ").length).join ' '
@@ -19,9 +25,14 @@ class Logger
 
     process.stdout.write "#{Color.bright_white}#{new Date - @started}ms#{Color.reset} "+
       "#{if @host then "#{RainbowIndex @host}#{@host}#{Color.reset} " else ""}"+
-      "#{Color[o.type_color[o.type]]}#{if o.type is 'out' then '' else "[#{o.type}] "}#{Color.reset}"+
+      "#{Color.black}"+
+      "#{if o.type is 'out' then '' else "[#{o.type}] "}"+
+      "#{Color[o.type_color[o.type]]}"+
       "#{s}"+
-      "#{if o.type is 'out' then "" else "\n"}"
+      "#{if o.type is 'out' or o.newline is false then "\r" else "\n"}"+
+      "#{Color.reset}"
+
+    cb() if typeof cb is 'function'
 
 class RainbowIndex
   @id: 0
