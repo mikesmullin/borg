@@ -59,3 +59,11 @@ module.exports = -> _.assign @,
 
   cron: (name, [o]..., cb) ->
     cb()
+
+  #directory: (name, [o]..., cb) =>
+  #  ((next)=>
+  #    @execute "#{if o?.sudo then 'sudo ' else ''}mkdir #{if o?.recursive then '-p ' else ''}#{if o?.chmod then '-m'+o.chmod+' ' else ''}#{name}", next
+  #  )(=>((next)=>
+  #    return next() unless o?.user or o?.group
+  #    @execute "#{if o?.sudo then 'sudo ' else ''}chown #{o?.user}:#{o?.group} #{name}", next
+  #  )(cb))
