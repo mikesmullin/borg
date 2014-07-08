@@ -16,8 +16,10 @@ class Borg
 
   # async flow control
   _Q: []
-  then: (fn, args...) -> @_Q.push(-> args.push @_Q.next; fn.apply null, args); @
-  next: (err) -> @_Q.splice 0, @_Q.length-1 if err; @_Q.shift()?.apply null, arguments
+  next: (err) => @_Q.splice 0, @_Q.length-1 if err; @_Q.shift()?.apply null, arguments
+  then: (fn, args...) ->
+    @die 'invalid function referenced' unless typeof fn is 'function'
+    @_Q.push(=> args.push @next; fn.apply null, args); @
   finally: (fn, args...) -> @_Q.push(-> fn.apply null, args); @next()
 
   # attributes
