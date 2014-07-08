@@ -38,6 +38,7 @@ class Borg
   networks: {}
   server: {}
   define: (o) => @server = _.merge @server, o
+  default: (o) => @server = _.merge o, @server
   fqdn: (server) -> "#{server.datacenter}-#{server.env}-#{server.instance}-#{server.type}.#{server.tld}"
 
   eachServer: (cb) ->
@@ -81,7 +82,7 @@ class Borg
     @networks = require path.join @cwd, 'attributes', 'networks'
     @server = {}
     # import default attributes
-    @import 'attributes', 'default'
+    @import @cwd, 'attributes', 'default'
     # find server matching pattern, override server attributes with matching network instance attributes
     @eachServer ({ datacenter, type, instance }) =>
       #console.log dc: datacenter, t: type, i: instance, pattern: pattern
@@ -104,7 +105,9 @@ class Borg
 
   # scripts
   import: (paths...) ->
-    (require path.join.apply null, [ @cwd ].concat paths).apply @
+    p = path.join.apply null, paths
+    @log "importing #{p}..."
+    (require p).apply @
 
   # api / cli
   assimilate: ({user, key, pass, host, port, scripts, locals}, cb) ->
@@ -128,12 +131,12 @@ class Borg
       console.log 'server:'+ JSON.stringify @server, null, 2
 
       # all resources come from a separate vendor repository
-      @import 'scripts', 'vendor', 'resources'
+      @import @cwd, 'scripts', 'vendor', 'resources'
 
       # begin chaining script execution callbacks
       scripts = [ host ] unless scripts
       for script in scripts
-        @import 'servers', script
+        @import @cwd, 'servers', script
       # finish and execute chain
       @finally =>
         @ssh.close()
