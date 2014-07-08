@@ -111,6 +111,11 @@ class Borg
       throw err if err # TODO: pass caught errors to callback
 
       console.log 'server:'+ JSON.stringify @server, null, 2
+
+      # import base resources
+      (require path.join __dirname, 'resources').apply @
+
+      # begin chaining script execution callbacks
       scripts = [ host ] unless scripts
       for script in scripts
         @import 'servers', script
