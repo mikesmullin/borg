@@ -46,7 +46,7 @@ class Borg
         for instance, vvv of vv when not _.contains ['_default'], instance
           return if false is cb datacenter: datacenter, type: type, instance: instance
 
-  getServerAttributes: (datacenter, type, instance, locals) ->
+  getServerAttributes: (datacenter, type, instance, locals = {}) ->
     # flatten server attributes from hierarchical network structure;
     # an individual server's attributes are composed of:
     server = {}
@@ -69,6 +69,9 @@ class Borg
       when 'production' then 'prod'
       else server.environment
     server.fqdn = @fqdn server
+    for own dev, adapter of server.network when adapter.private
+      server.private_ip = adapter.address
+      break
     #  e) plus a few local attributes (overrides everything else)
     server = _.merge server, locals
     return server
