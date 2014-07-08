@@ -20,12 +20,22 @@ class Borg
   then: (fn, args...) ->
     @die 'invalid function referenced' unless typeof fn is 'function'
     @_Q.push(=> args.push @next; fn.apply null, args); @
-  finally: (fn, args...) -> @_Q.push(-> fn.apply null, args); @next()
+  finally: (fn, args...) => @_Q.push(-> fn.apply null, args); @next()
+  when: (test, true_cb) =>
+    @then (cb) =>
+      unless test()
+        cb()
+      else
+        old_Q = @_Q; @_Q = []
+        true_cb =>
+          @finally =>
+            @_Q = old_Q
+            cb()
 
   # attributes
   networks: {}
   server: {}
-  define: (o) -> @server = _.merge @server, o
+  define: (o) => @server = _.merge @server, o
   fqdn: (server) -> "#{server.datacenter}-#{server.env}-#{server.instance}-#{server.type}.#{server.tld}"
 
   eachServer: (cb) ->
