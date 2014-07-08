@@ -108,16 +108,16 @@ class Borg
     # connect via ssh
     Ssh = require './Ssh'
     @ssh = new Ssh user: user, pass: pass, host: host, port: port, key: key, (err) =>
-      throw err if err
-      @assimilated = =>
-        @ssh.close()
-        cb()
+      throw err if err # TODO: pass caught errors to callback
+
       console.log 'server:'+ JSON.stringify @server, null, 2
       scripts = [ host ] unless scripts
       for script in scripts
         @import 'servers', script
-
-      cb null # TODO: pass caught errors to callback
+      # finish and execute chain
+      @finally =>
+        @ssh.close()
+        cb null
 
 
 
