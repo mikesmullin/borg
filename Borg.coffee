@@ -6,7 +6,7 @@ class Borg
   # process
   log: (require './Logger').out
   die: (reason) ->
-    @log type: 'err', reason
+    @log type: 'err', "ERROR: "+reason
     console.trace()
     process.exit 1
     return
