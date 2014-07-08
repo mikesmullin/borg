@@ -112,8 +112,8 @@ class Borg
 
       console.log 'server:'+ JSON.stringify @server, null, 2
 
-      # import base resources
-      (require path.join __dirname, 'resources').apply @
+      # all resources come from a separate vendor repository
+      @import 'scripts', 'vendor', 'resources'
 
       # begin chaining script execution callbacks
       scripts = [ host ] unless scripts
