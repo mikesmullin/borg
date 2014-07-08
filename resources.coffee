@@ -18,6 +18,8 @@ module.exports = -> _.assign @,
       @ssh.cmd "sudo apt-get install -y #{packages}", cb
     )
 
+  # the second time you have to use execute,
+  # you probably should create a new resource instead
   execute: (cmd, [o]..., cb) =>
     @ssh.cmd.apply @ssh, arguments
 
