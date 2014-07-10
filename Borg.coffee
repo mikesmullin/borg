@@ -1,4 +1,5 @@
 path = require 'path'
+fs = require 'fs'
 _ = require 'lodash'
 require 'sugar'
 Logger = require './Logger'
@@ -107,7 +108,17 @@ class Borg
   import: (paths...) ->
     p = path.join.apply null, paths
     @log "importing #{p}..."
-    (require p).apply @
+    try
+      stats = fs.statSync p
+      if stats.isDirectory()
+        @importCwd = p
+    catch err
+      if err?.code is 'ENOENT'
+        @importCwd = path.dirname p
+      else
+        @die err
+    finally
+      (require p).apply @
 
   # api / cli
   assimilate: ({user, key, pass, host, port, scripts, locals}, cb) ->
