@@ -130,8 +130,6 @@ class Borg
     @ssh = new Ssh user: user, pass: pass, host: host, port: port, key: key, (err) =>
       throw err if err # TODO: pass caught errors to callback
 
-      console.log 'server:'+ JSON.stringify @server, null, 2
-
       # all resources come from a separate vendor repository
       @import @cwd, 'scripts', 'vendor', 'resources'
 
@@ -140,6 +138,8 @@ class Borg
       for script in scripts
         @import @cwd, 'servers', script
       # finish and execute chain
+
+      console.log 'server:'+ JSON.stringify @server, null, 2
       @finally =>
         @ssh.close()
         setTimeout (-> cb null), 100
