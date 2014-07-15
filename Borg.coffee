@@ -55,11 +55,11 @@ class Borg
     server.datacenter = datacenter
     server.type = type
     server.instance = instance
-    server.env = switch server.environment
-      when 'development' then 'dev'
-      when 'staging' then 'stage'
-      when 'production' then 'prod'
-      else server.environment
+    server.environment = switch server.env
+      when 'dev' then 'development'
+      when 'stage' then 'staging'
+      when 'prod' then 'production'
+      else server.env
     server.fqdn = @fqdn server
     server.hostname = "#{server.type}#{server.instance}"
     for own dev, adapter of server.network when adapter.private
