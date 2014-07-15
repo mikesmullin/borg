@@ -11,22 +11,26 @@ module.exports = class Ssh
     @connect cb
     return
 
-  connect: (cb) ->
+  connect: (@cb) ->
     Logger.out host: @host, 'ssh connecting...'
+
     @ssh  = new Ssh2()
     @ssh.once 'connect', =>
       Logger.out 'ssh connected'
     @ssh.once 'ready', =>
       Logger.out 'ssh authenticated'
       @ssh.sftp (err, sftp) =>
-        return cb err if err
+        return @cb err if err
         @sftp = sftp
         @sftp.on 'end', ->
           Logger.out 'ssh sftp closed'
         Logger.out 'ssh sftp session created'
-        cb()
+        @cb()
     @ssh.on 'error', (err) =>
       Logger.out "ssh error: #{err}"
+      if (''+err).match /Timed out/
+        Logger.out "will retry connect."
+        new Ssh user: @user, pass: @pass, host: @host, port: @port, key: @key, @cb
     @ssh.on 'end', =>
       Logger.out 'ssh end'
     @ssh.on 'close', =>
