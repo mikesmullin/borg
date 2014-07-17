@@ -85,7 +85,7 @@ class Borg
         null isnt (new RegExp(pattern)).exec(server.fqdn) or # regex match
         ( # locals match
           locals.datacenter is server.datacenter and
-          locals.environment is server.environment and
+          locals.env is server.env and
           locals.type is server.type and
           locals.instance is server.instance and
           locals.tld is server.tld
