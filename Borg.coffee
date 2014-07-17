@@ -124,6 +124,7 @@ class Borg
 
     #console.log "Network attributes: "+ JSON.stringify @networks, null, 2
     #console.log "Server attributes: "+ JSON.stringify @server, null, 2
+    console.log "You passed: "+JSON.stringify scripts: scripts, locals: locals
 
     # connect via ssh
     Ssh = require './Ssh'
