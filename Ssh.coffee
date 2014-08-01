@@ -13,8 +13,7 @@ module.exports = class Ssh
 
   connect: (@cb) ->
     Logger.out host: @host, 'ssh connecting...'
-
-    @ssh  = new Ssh2()
+    @ssh = new Ssh2()
     @ssh.once 'connect', =>
       Logger.out 'ssh connected'
     @ssh.once 'ready', =>

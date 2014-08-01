@@ -18,7 +18,7 @@ class Logger
       stdout: 'magenta'
       stderr: 'bright_red'
       err: 'bright_red'
-    @host ||= o.host
+    @host = o.host if o.host
 
     pad = new Array(("#{new Date - @started}ms #{if @host then "#{@host} " else ""}#{if o.type is 'out' then '' else "[#{o.type}] "} ").length).join ' '
     s = s.toString().replace(/\n/g, "\n"+pad) # pad w/ spaces
