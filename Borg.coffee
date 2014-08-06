@@ -112,24 +112,24 @@ class Borg
       (require p).apply @
 
   # api / cli
-  assimilate: ({user, key, pass, host, port, scripts, locals}, cb) ->
-    port ||= 22
-    locals.ssh =
-      user: user
-      host: host
-      port: port
+  assimilate: (locals, cb) ->
+    locals.ssh ||= {}
+    locals.ssh.port ||= 22
 
     # load server attributes for named host
-    @reloadAttributes host, locals
+    @reloadAttributes locals.ssh.host, locals
 
     #console.log "Network attributes: "+ JSON.stringify @networks, null, 2
     #console.log "Server attributes: "+ JSON.stringify @server, null, 2
-    console.log "You passed: "+JSON.stringify scripts: scripts, locals: locals
+    scrubbed_locals = _.cloneDeep locals
+    scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
+    scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
+    console.log "You passed: "+JSON.stringify scrubbed_locals
 
     # connect via ssh
     Ssh = require './Ssh'
-    @ssh = new Ssh user: user, pass: pass, host: host, port: port, key: key, (err) =>
-      throw err if err
+    @ssh = new Ssh locals.ssh, (err) =>
+      return cb err if err
       @finally =>
         @ssh.close()
         setTimeout (-> cb null), 100
