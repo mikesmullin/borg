@@ -27,9 +27,11 @@ module.exports = class Ssh
         @cb()
     @ssh.on 'error', (err) =>
       Logger.out "ssh error: #{err}"
-      if (''+err).match /Timed out/
-        Logger.out "will retry connect."
-        new Ssh user: @user, pass: @pass, host: @host, port: @port, key: @key, @cb
+      # TODO: implement max retries here
+      #if (''+err).match /Timed out/
+      #  Logger.out "will retry connect."
+      #  new Ssh user: @user, pass: @pass, host: @host, port: @port, key: @key, @cb
+      @cb err
     @ssh.on 'end', =>
       Logger.out 'ssh end'
     @ssh.on 'close', =>
