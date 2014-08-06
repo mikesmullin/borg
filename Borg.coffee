@@ -138,11 +138,11 @@ class Borg
     @import @cwd, 'scripts', 'vendor', 'resources'
 
     # begin chaining script execution callbacks
-    scripts = [ host ] unless scripts
-    for script in scripts
-      @import @cwd, 'servers', script
-    # finish and execute chain
+    locals.scripts ||= [ 'servers/'+locals.ssh.host ]
+    for script in locals.scripts
+      @import @cwd, 'scripts', script
 
+    # finish and execute chain
     console.log 'server:'+ JSON.stringify @server, null, 2
 
 
