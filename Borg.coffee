@@ -21,7 +21,7 @@ class Borg
   _Q: []
   next: (err) => @_Q.splice 0, @_Q.length-1 if err; @_Q.shift()?.apply null, arguments
   then: (fn, args...) ->
-    @die 'invalid function referenced' unless typeof fn is 'function'
+    @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn)+' with args: '+JSON.stringify(args) unless typeof fn is 'function'
     @_Q.push(=> args.push @next; fn.apply null, args); @
   finally: (fn, args...) => @_Q.push(-> fn.apply null, args); @next()
 
