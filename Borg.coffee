@@ -24,6 +24,18 @@ class Borg
     @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn)+' with args: '+JSON.stringify(args) unless typeof fn is 'function'
     @_Q.push(=> args.push @next; fn.apply null, args); @
   finally: (fn) => @_Q.push fn; @next()
+  sub: (fn, cb) =>
+    oldQ = @_Q
+    @_Q = []
+    fn (warn) =>
+      @log warn if warn # errors passed to end() are considered non-fatal warnings
+      # if you meant for them to be fatal, you shuold call @die() instead of end()
+      @_Q.splice 0, @_Q.length-1 # skip any remaining functions
+      @_Q.shift()?.apply null
+    @finally (err) =>
+      @die err if err
+      @_Q = oldQ
+      cb()
 
   # attributes
   networks: {}
