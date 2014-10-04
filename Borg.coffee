@@ -23,7 +23,7 @@ class Borg
   then: (fn, args...) ->
     @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn)+' with args: '+JSON.stringify(args) unless typeof fn is 'function'
     @_Q.push(=> args.push @next; fn.apply null, args); @
-  finally: (fn, args...) => @_Q.push(-> fn.apply null, args); @next()
+  finally: (fn) => @_Q.push fn; @next()
 
   # attributes
   networks: {}
@@ -130,7 +130,8 @@ class Borg
     Ssh = require './Ssh'
     @ssh = new Ssh locals.ssh, (err) =>
       return cb err if err
-      @finally =>
+      @finally (err) =>
+        @die err if err
         @ssh.close()
         setTimeout (-> cb null), 100
 
