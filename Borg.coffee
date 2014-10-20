@@ -42,7 +42,7 @@ class Borg
   server: {}
   define: (o) => @server = _.merge @server, o
   default: (o) => @server = _.merge o, @server
-  fqdn: (server) -> "#{server.datacenter}-#{server.env}-#{server.instance}-#{server.type}.#{server.tld}"
+  fqdn: (server) -> "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}.#{server.tld}"
 
   eachServer: (cb) ->
     for datacenter, v of @networks.datacenters
