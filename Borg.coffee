@@ -73,7 +73,7 @@ class Borg
       when 'prod' then 'production'
       else server.env
     server.fqdn = @fqdn server
-    server.hostname = "#{server.type}#{server.instance}"
+    server.hostname = server.fqdn
     for own dev, adapter of server.network when adapter.private
       server.private_ip = adapter.address
       break
