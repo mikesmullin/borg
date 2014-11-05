@@ -134,7 +134,28 @@ class Borg
     finally
       (require p).apply @
 
-  # api / cli
+
+
+  ## api / cli
+
+  create: (locals, cb) ->
+    locals ||= {}
+    if locals.fqdn
+      if null isnt matches = locals.fqdn.match /^([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(-([a-z]+))?(\.\w+\.[a-z]{2,3})$/i
+        [nil, locals.datacenter, locals.env, locals.type, locals.instance, nil, locals.subproject, locals.tld] = matches
+      else
+        @die "unrecognized fqdn format: #{locals.fqdn}. should be {datacenter}-{env}-{type}{instance}-{subproject}{tld}"
+    else if locals.datacenter and locals.env and locals.type and locals.instance and locals.tld
+      locals.fqdn = "#{locals.datacenter}-#{locals.env}-#{locals.type}#{locals.instance}.#{locals.tld}"
+    else
+      @die "locals.fqdn is required by create(). cannot continue."
+
+    # load server attributes for named host
+    @reloadAttributes locals.fqdn, locals
+
+    console.log server: @server
+    process.exit 1
+
   assimilate: (locals, cb) ->
     locals.ssh ||= {}
     locals.ssh.port ||= 22
