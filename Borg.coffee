@@ -156,6 +156,39 @@ class Borg
     console.log server: @server
     process.exit 1
 
+    switch @server.provider
+      when 'aws'
+        Aws = require './aws'
+        Aws.createInstance locals.fqdn, job, ((instanceId) ->
+          # create instance with 'preparing' status
+          locals.status = 'procuring'
+          rememberInstance
+            instance_id: instanceId
+            locals: locals
+            ->
+        ), (instance) -> delay 60*1000*2, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
+          # save instance details for later deletion
+          locals.public_ip = instance.publicIpAddress
+          locals.private_ip = instance.privateIpAddress
+          locals.network ||= {}
+          locals.network.eth1 ||= {}
+          locals.network.eth1.address = instance.privateIpAddress
+          locals.status = 'assimilating'
+          rememberInstance
+            instance_id: instance.instanceId
+            locals: locals
+            ->
+              # assimilate the new machine
+              locals.ssh ||= {}
+              locals.ssh.host = instance.publicIpAddress or instance.privateIpAddress
+              callBorg locals, (err) ->
+                if err
+                  locals.status = 'error'
+                else
+                  locals.status = 'running'
+                rememberInstance instance_id: instance.instanceId, locals: locals, ->
+                  done !err
+
   assimilate: (locals, cb) ->
     locals.ssh ||= {}
     locals.ssh.port ||= 22
