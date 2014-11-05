@@ -82,11 +82,18 @@ class Borg
     return server
 
   reloadAttributes: (pattern, locals) ->
+    # helpful for debugging
+    scrubbed_locals = _.cloneDeep locals
+    scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
+    scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
+    console.log "You passed: "+JSON.stringify scrubbed_locals
+
     # load network map
     @networks = require path.join @cwd, 'attributes', 'networks'
     @server = {}
     # import default attributes
     @import @cwd, 'attributes', 'default'
+
     # find server matching pattern, override server attributes with matching network instance attributes
     @eachServer ({ datacenter, type, instance }) =>
       #console.log dc: datacenter, t: type, i: instance, pattern: pattern
@@ -106,6 +113,10 @@ class Borg
       server = @getServerAttributes datacenter, type, instance, locals
       @server = _.merge @server, server
       return false # stop searching for matching servers
+
+    # helpful for debugging
+    #console.log "Network attributes: "+ JSON.stringify @networks, null, 2
+    #console.log "Server attributes: "+ JSON.stringify @server, null, 2
 
   # scripts
   import: (paths...) ->
@@ -130,13 +141,6 @@ class Borg
 
     # load server attributes for named host
     @reloadAttributes locals.ssh.host, locals
-
-    #console.log "Network attributes: "+ JSON.stringify @networks, null, 2
-    #console.log "Server attributes: "+ JSON.stringify @server, null, 2
-    scrubbed_locals = _.cloneDeep locals
-    scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
-    scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
-    console.log "You passed: "+JSON.stringify scrubbed_locals
 
     # connect via ssh
     Ssh = require './Ssh'
