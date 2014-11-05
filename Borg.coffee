@@ -14,8 +14,8 @@ class Borg
     process.exit 1
     return
 
-  constructor: ({cwd, cmd}) ->
-    @cwd = cwd or process.cwd()
+  constructor: (o) ->
+    @cwd = o?.cwd or process.cwd()
 
   # async flow control
   _Q: []
@@ -158,10 +158,18 @@ class Borg
     # finish and execute chain
     console.log 'server:'+ JSON.stringify @server, null, 2
 
+  assemble: (locals, cb) ->
+    @provision locals, =>
+      @assimilate locals, cb
 
-
-
-
+  # TODO: test this and make it work again
+  cmd: (target, options, cb) ->
+    console.log arguments
+    ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, ->
+      if err then return Logger.out host: target.host, type: 'err', err
+      ssh.cmd options.eol, {}, (err) ->
+        ssh.close()
+        cb()
 
 
 
@@ -211,49 +219,3 @@ class Borg
 #        Logger.out 'all done.'
 #        process.exit 0
 #
-#  @rekey: (target, options, cb) ->
-#
-#  @assimilate: (target, options, cb) ->
-#    # build node object
-#    global.node =
-#      default: f = (ns, v) ->
-#        n = node
-#        t = ns.split '.'
-#        l = t.length - 1
-#        for k, i in t
-#          if i is l then n[k] = v
-#          else if typeof n[k] isnt 'object' then n[k] = {}
-#          n = n[k]
-#        return
-#      define: f
-#      require: (ns, reason='') ->
-#        n = node
-#        for k in ns.split '.'
-#          if n[k] is undefined then throw "Fatal: node.#{ns} is undefined. #{reason}"
-#          n = n[k]
-#        return n[k]
-#    # load network map + apply attribute defaults
-#    { networks, get_instance_attrs } = global.Network = require './Network'
-#    global.node.networks = networks
-#    # apply target attribute defaults
-#    global.node = _.merge global.node, attrs = get_instance_attrs target.host
-#    # apply script attribute defaults
-#    require path.join process.cwd(), 'attributes', 'default'
-#
-#    # connect via ssh
-#    global.ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, ->
-#      global.assimilated = ->
-#        ssh.close()
-#        cb()
-#      require path.join process.cwd(), 'scripts', 'vendor', 'resources'
-#      require path.join process.cwd(), 'scripts', 'first'
-#      require path.join process.cwd(), 'servers', "#{target.host}.coffee"
-#      require path.join process.cwd(), 'scripts', 'last'
-#
-#  @cmd: (target, options, cb) ->
-#    #console.log arguments
-#    ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, ->
-#      #if err then return Logger.out host: target.host, type: 'err', err
-#      ssh.cmd options.eol, {}, (err) ->
-#        ssh.close()
-#        cb()

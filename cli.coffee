@@ -1,7 +1,9 @@
+Borg = require './Borg'
+borg = new Borg
+
 switch cmd = process.argv[2]
-  when 'rekey', 'assimilate', 'cmd'
-    Borg = require './index'
-    Borg cmd
+  when 'create', 'assimilate', 'assemble', 'cmd'
+    borg[cmd] fqdn: process.argv[3], ->
   when 'test'
     (require './Test')()
   when '-V', '--version', 'version'
@@ -64,9 +66,11 @@ switch cmd = process.argv[2]
 
         Commands:
 
+          create      construct hosts in the cloud via provider apis
           rekey       copy ssh public key to authorized_hosts on remote host(s)
-          assimilate  bootstrap and cook remote host(s)
-          cmd         bulk execute command on remote host(s)
+          assimilate  execute scripted commands via ssh on hosts
+          assemble    provision and assimilate hosts
+          cmd         bulk execute command on hosts
           test        simulate assimilation on localhost
 
         Options:
