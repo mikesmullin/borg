@@ -49,7 +49,7 @@ class Borg
     scrubbed_locals = _.cloneDeep locals
     scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
     scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
-    console.log "You passed: "+JSON.stringify scrubbed_locals
+    console.log "You passed:\n"+JSON.stringify scrubbed_locals
 
     # load network attributes
     @networks = require path.join @cwd, 'attributes', 'networks'
@@ -64,7 +64,7 @@ class Borg
               _.omit vv, 'servers'
               _.omit vvv, 'instances'
               vvvv
-    #console.log "Network attributes: "+ JSON.stringify @networks, null, 2
+    console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
 
     server = {}
     # find server matching pattern, override server attributes with matching network instance attributes
@@ -77,10 +77,8 @@ class Borg
             return vvvv
     )(locals)
 
-    # apply local attributes
-    _.merge server, locals
-
     # plus a few implicitly calculated attributes
+    _.merge server, locals # local attributes may be needed first
     server.environment = switch server.env
       when 'dev' then 'development'
       when 'stage' then 'staging'
@@ -98,7 +96,7 @@ class Borg
     # local attributes override everything else
     _.merge server, locals
 
-    console.log "Server attributes: "+ JSON.stringify server, null, 2
+    console.log "Server attributes:\n"+ JSON.stringify server, null, 2
     return server
 
   # scripts
@@ -156,44 +154,47 @@ class Borg
       @die "locals.fqdn is required by create(). cannot continue."
 
     @server = @getServerObject locals
-    process.exit 1
 
-    switch @server.provider
-      when 'aws'
-        Aws = require './aws'
-        Aws.createInstance locals.fqdn, job, ((instanceId) ->
-          # create instance with 'preparing' status
-          locals.status = 'procuring'
-          rememberInstance
-            instance_id: instanceId
-            locals: locals
-            ->
-        ), (instance) -> delay 60*1000*2, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
-          # save instance details for later deletion
-          locals.public_ip = instance.publicIpAddress
-          locals.private_ip = instance.privateIpAddress
-          locals.network ||= {}
-          locals.network.eth1 ||= {}
-          locals.network.eth1.address = instance.privateIpAddress
-          locals.status = 'assimilating'
-          rememberInstance
-            instance_id: instance.instanceId
-            locals: locals
-            ->
-              # assimilate the new machine
-              locals.ssh ||= {}
-              locals.ssh.host = instance.publicIpAddress or instance.privateIpAddress
-              callBorg locals, (err) ->
-                if err
-                  locals.status = 'error'
-                else
-                  locals.status = 'running'
-                rememberInstance instance_id: instance.instanceId, locals: locals, ->
-                  done !err
+    provision = =>
+      console.log 'beginning provision'
+      switch @server.provider
+        when 'aws'
+          Aws = require './cloud/aws'
+          console.log 'aws loaded'
+          Aws.createInstance @server.fqdn, job, ((id) ->
+            console.log "procuring instance_id #{id}..."
+          ), (instance) -> delay 60*1000*2, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
+            locals.public_ip = instance.publicIpAddress
+            locals.private_ip = instance.privateIpAddress
+            next()
+
+    next = =>
+      # save a few instance details to disk for future reference
+      @remember "/#{locals.fqdn}/private_ip", locals.private_ip
+      @remember "/#{locals.fqdn}/public_ip", locals.public_ip
+
+      # build remaining locals to match would-be calculated values
+      # TODO: possibly call createServerObject() again here
+      locals.network ||= {}
+      locals.network.eth1 ||= {}
+      locals.network.eth1.address = locals.private_ip
+      locals.ssh ||= {}
+      locals.ssh.host = locals.public_ip or locals.private_ip
+
+      # assimilate the new machine
+      console.log "assimilating instance_id #{instance.instanceId}..."
+      @assimilate locals, cb
+
+    provision()
+
 
   assimilate: (locals, cb) ->
     locals.ssh ||= {}
     locals.ssh.port ||= 22
+
+    console.log 'assimilate called.'
+    console.log locals: locals
+    process.exit 1
 
     # load server attributes for named host
     @reloadAttributes locals.ssh.host, locals
