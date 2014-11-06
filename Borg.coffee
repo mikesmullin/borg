@@ -42,81 +42,61 @@ class Borg
   server: {}
   define: (o) => @server = _.merge @server, o
   default: (o) => @server = _.merge o, @server
-  fqdn: (server) -> "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}.#{server.tld}"
 
-  eachServer: (cb) ->
-    for datacenter, v of @networks.datacenters
-      for type, vv of @networks[datacenter] when not _.contains ['_default', 'nat_networks'], type
-        for instance, vvv of vv when not _.contains ['_default'], instance
-          return if false is cb datacenter: datacenter, type: type, instance: instance
-
-  getServerAttributes: (datacenter, type, instance, locals = {}) ->
-    # flatten server attributes from hierarchical network structure;
-    # an individual server's attributes are composed of:
-    server = {}
-    #  a) attributes which all instances in a specific datacenter share
-    if @networks[datacenter]._default?
-      server = _.merge server, @networks[datacenter]._default
-    #  b) attributes which all instances of specific server type share
-    if @networks[datacenter][type]._default?
-      server = _.merge server, @networks[datacenter][type]._default
-    #  c) specific per-instance attributes
-    server = _.merge server, @networks[datacenter][type][instance]
-    #  d) plus a few implicitly calculated attributes
-    server.environment ||= 'development'
-    server.datacenter = datacenter
-    server.type = type
-    server.instance = instance
-    server.environment = switch server.env
-      when 'dev' then 'development'
-      when 'stage' then 'staging'
-      when 'prod' then 'production'
-      else server.env
-    server.fqdn = @fqdn server
-    server.hostname = server.fqdn
-    for own dev, adapter of server.network when adapter.private
-      server.private_ip = adapter.address
-      break
-    #  e) plus a few local attributes (overrides everything else)
-    server = _.merge server, locals
-    return server
-
-  reloadAttributes: (pattern, locals) ->
+  # compile all attributes into a single @server object hierarchy
+  getServerObject: (locals) ->
     # helpful for debugging
     scrubbed_locals = _.cloneDeep locals
     scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
     scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
     console.log "You passed: "+JSON.stringify scrubbed_locals
 
-    # load network map
+    # load network attributes
     @networks = require path.join @cwd, 'attributes', 'networks'
-    @server = {}
-    # import default attributes
-    @import @cwd, 'attributes', 'default'
-
-    # find server matching pattern, override server attributes with matching network instance attributes
-    @eachServer ({ datacenter, type, instance }) =>
-      #console.log dc: datacenter, t: type, i: instance, pattern: pattern
-      server = @getServerAttributes datacenter, type, instance, {}
-      #console.log server: server, locals: locals
-      # skip unless pattern matches
-      return unless pattern is server.fqdn or # exact string match
-        null isnt (new RegExp(pattern)).exec(server.fqdn) or # regex match
-        ( # locals match
-          locals.datacenter is server.datacenter and
-          locals.env is server.env and
-          locals.type is server.type and
-          locals.instance is server.instance and
-          locals.tld is server.tld
-        )
-      # found match
-      server = @getServerAttributes datacenter, type, instance, locals
-      @server = _.merge @server, server
-      return false # stop searching for matching servers
-
-    # helpful for debugging
+    # flatten network attributes
+    for datacenter, v of @networks.datacenters
+      for group, vv of v.groups
+        for server, vvv of vv.servers
+          for instance, vvvv of vvv.instances
+            _.merge vvvv,
+              @networks.global,
+              _.omit v, 'groups'
+              _.omit vv, 'servers'
+              _.omit vvv, 'instances'
+              vvvv
     #console.log "Network attributes: "+ JSON.stringify @networks, null, 2
-    #console.log "Server attributes: "+ JSON.stringify @server, null, 2
+
+    server = {}
+    # find server matching pattern, override server attributes with matching network instance attributes
+    _.merge server, (findServer = ({datacenter, env, type, instance, subproject, tld}) =>
+      if v = @networks.datacenters[datacenter]
+        for nil, vv of v.groups when (vvvv = vv.servers[type]?.instances[instance]) and
+          vvvv.env is env and
+          vvvv.tld is tld and
+          vvvv.subproject is subproject # can both be null
+            return vvvv
+    )(locals)
+
+    # apply local attributes
+    _.merge server, locals
+
+    # plus a few implicitly calculated attributes
+    server.environment = switch server.env
+      when 'dev' then 'development'
+      when 'stage' then 'staging'
+      when 'prod' then 'production'
+      else server.env
+    server.fqdn = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
+    server.hostname = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
+    for own dev, adapter of server.network when adapter.private
+      server.private_ip = adapter.address
+      break
+
+    # local attributes override everything else
+    _.merge server, locals
+
+    console.log "Server attributes: "+ JSON.stringify server, null, 2
+    return server
 
   # scripts
   import: (paths...) ->
@@ -137,12 +117,11 @@ class Borg
 
 
   ## api / cli
-
   create: (locals, cb) ->
     locals ||= {}
     if locals.fqdn
-      if null isnt matches = locals.fqdn.match /^([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(-([a-z]+))?(\.\w+\.[a-z]{2,3})$/i
-        [nil, locals.datacenter, locals.env, locals.type, locals.instance, nil, locals.subproject, locals.tld] = matches
+      if null isnt matches = locals.fqdn.match /^([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(-([a-z]+))?(\.(\w+\.[a-z]{2,3}))$/i
+        [nil, locals.datacenter, locals.env, locals.type, locals.instance, nil, locals.subproject, nil, locals.tld] = matches
       else
         @die "unrecognized fqdn format: #{locals.fqdn}. should be {datacenter}-{env}-{type}{instance}-{subproject}{tld}"
     else if locals.datacenter and locals.env and locals.type and locals.instance and locals.tld
@@ -150,10 +129,7 @@ class Borg
     else
       @die "locals.fqdn is required by create(). cannot continue."
 
-    # load server attributes for named host
-    @reloadAttributes locals.fqdn, locals
-
-    console.log server: @server
+    @server = @getServerObject locals
     process.exit 1
 
     switch @server.provider
@@ -223,6 +199,7 @@ class Borg
   # TODO: test this and make it work again
   cmd: (target, options, cb) ->
     console.log arguments
+    # TODO: reimplement regex matching when we want to match on more than one hostname
     ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, ->
       if err then return Logger.out host: target.host, type: 'err', err
       ssh.cmd options.eol, {}, (err) ->
