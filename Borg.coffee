@@ -92,6 +92,9 @@ class Borg
       server.private_ip = adapter.address
       break
 
+    # apply details remembered
+    _.merge server, @remember server.fqdn
+
     # local attributes override everything else
     _.merge server, locals
 
@@ -114,9 +117,32 @@ class Borg
     finally
       (require p).apply @
 
+  remember: (xpath, value=undefined) ->
+    # load
+    memory_file = path.join process.cwd(), 'attributes', 'memory.json'
+    delete require.cache[require.resolve memory_file] # invalidate cache
+    memory = require memory_file
+    # evaluate path
+    pointer = memory
+    parts = xpath.split '/'
+    for i in [0...parts.length]
+      key = parts[i]
+      continue if key is '' # skip empty key names so / can be used as root
+      if i is parts.length-1
+        # operate
+        if value is undefined # read
+          return pointer[key]
+        else # write
+          pointer[key] = value
+          fs.writeFileSync memory_file, JSON.stringify memory, null, 2
+          return
+      else
+        pointer[key] ||= {} # make new keys recursively
+        pointer = pointer[key] # advance pointer one level deeper
 
 
   ## api / cli
+
   create: (locals, cb) ->
     locals ||= {}
     if locals.fqdn
