@@ -4,6 +4,7 @@ _ = require 'lodash'
 require 'sugar'
 Logger = require './Logger'
 global.DEBUG = true
+delay = (s,f) -> setTimeout f, s
 
 module.exports =
 class Borg
@@ -62,7 +63,7 @@ class Borg
     flattenNetworkAttributes = =>
       for datacenter, v of @networks.datacenters
         for group, vv of v.groups
-          for server, vvv of vv.servers
+          for type, vvv of vv.servers
             for instance, vvvv of vvv.instances
               _.merge vvvv,
                 @networks.global,
@@ -73,7 +74,7 @@ class Borg
 
               # plus a few implicitly calculated attributes
               vvvv.datacenter ||= datacenter
-              vvvv.type ||= server
+              vvvv.type ||= type
               vvvv.instance ||= instance
               vvvv.environment = switch vvvv.env
                 when 'dev' then 'development'
@@ -99,7 +100,7 @@ class Borg
                 locals.tld is vvvv.tld and
                 locals.subproject is vvvv.subproject # can both be null
                   possible_group ||= group unless locals.group # optionally reverse-lookup server group
-                  if locals.type is server and
+                  if locals.type is type and
                     locals.instance is instance
                       locals.group ||= group
                       found = true
@@ -121,6 +122,7 @@ class Borg
     _.merge server, locals
 
     console.log "Server attributes:\n"+ JSON.stringify server, null, 2
+
     return server
 
   # scripts
@@ -186,7 +188,7 @@ class Borg
           Aws = (require './cloud/aws')(console.log)
           Aws.createInstance @server.fqdn, @server, ((id) ->
             console.log "procuring instance_id #{id}..."
-          ), (instance) -> delay 60*1000*2, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
+          ), (instance) -> delay 60*1000*1, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
             locals.public_ip = instance.publicIpAddress
             locals.private_ip = instance.privateIpAddress
             next()
@@ -205,7 +207,7 @@ class Borg
       locals.ssh.host = locals.public_ip or locals.private_ip
 
       # assimilate the new machine
-      console.log "assimilating instance_id #{instance.instanceId}..."
+      console.log "assimilating #{locals.ssh.host}..."
       @assimilate locals, cb
 
     provision()
@@ -214,10 +216,6 @@ class Borg
   assimilate: (locals, cb) ->
     locals.ssh ||= {}
     locals.ssh.port ||= 22
-
-    console.log 'assimilate called.'
-    console.log locals: locals
-    process.exit 1
 
     # load server attributes for named host
     @reloadAttributes locals.ssh.host, locals
