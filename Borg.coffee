@@ -47,6 +47,17 @@ class Borg
 
   # compile all attributes into a single @server object hierarchy
   getServerObject: (locals) ->
+    locals ||= {}
+    if locals.fqdn
+      if null isnt matches = locals.fqdn.match /^([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(-([a-z]+))?(\.(\w+\.[a-z]{2,3}))$/i
+        [nil, locals.datacenter, locals.env, locals.type, locals.instance, nil, locals.subproject, nil, locals.tld] = matches
+      else
+        @die "unrecognized fqdn format: #{locals.fqdn}. should be {datacenter}-{env}-{type}{instance}-{subproject}{tld}"
+    else if locals.datacenter and locals.env and locals.type and locals.instance and locals.tld
+      locals.fqdn = "#{locals.datacenter}-#{locals.env}-#{locals.type}#{locals.instance}.#{locals.tld}"
+    else
+      @die "locals.fqdn is required. cannot continue."
+
     # helpful for debugging
     scrubbed_locals = _.cloneDeep locals
     scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
@@ -166,19 +177,7 @@ class Borg
 
 
   ## api / cli
-
   create: (locals, cb) ->
-    locals ||= {}
-    if locals.fqdn
-      if null isnt matches = locals.fqdn.match /^([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(-([a-z]+))?(\.(\w+\.[a-z]{2,3}))$/i
-        [nil, locals.datacenter, locals.env, locals.type, locals.instance, nil, locals.subproject, nil, locals.tld] = matches
-      else
-        @die "unrecognized fqdn format: #{locals.fqdn}. should be {datacenter}-{env}-{type}{instance}-{subproject}{tld}"
-    else if locals.datacenter and locals.env and locals.type and locals.instance and locals.tld
-      locals.fqdn = "#{locals.datacenter}-#{locals.env}-#{locals.type}#{locals.instance}.#{locals.tld}"
-    else
-      @die "locals.fqdn is required by create(). cannot continue."
-
     @server = @getServerObject locals
 
     provision = =>
@@ -218,7 +217,7 @@ class Borg
     locals.ssh.port ||= 22
 
     # load server attributes for named host
-    @reloadAttributes locals.ssh.host, locals
+    @server = @getServerObject locals
 
     # connect via ssh
     Ssh = require './Ssh'
