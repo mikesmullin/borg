@@ -53,6 +53,26 @@ class Borg
 
     # load network attributes
     @networks = require path.join @cwd, 'attributes', 'networks'
+
+    # optionally reverse-lookup server group by fqdn
+    # TODO: this wont work as-is without expansion. either expand first (twice) or traverse
+    locals.group ||= (findServerGroup = ({datacenter, env, type, instance, subproject, tld}) =>
+      if v = @networks.datacenters[datacenter]
+        for nil, vv of v.groups
+          if vvvv.env is env and
+            vvvv.tld is tld and
+            #(vvvv = vv.servers[type]?.instances[instance]) and
+            vvvv.subproject is subproject # can both be null
+              return group
+    )(locals)
+
+    # if server is not defined, define it as empty
+    console.log "WARNING! Server was not defined in network attributes. Assuming you meant to add it under '#{locals.group}' group."
+    @networks.datacenters[locals.datacenter]
+      .groups[locals.group]
+      .servers[locals.type]
+      .instances[locals.instance] = {}
+
     # flatten network attributes
     for datacenter, v of @networks.datacenters
       for group, vv of v.groups
@@ -66,16 +86,13 @@ class Borg
               vvvv
     console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
 
+    # apply network attributes for current server
     server = {}
-    # find server matching pattern, override server attributes with matching network instance attributes
-    _.merge server, (findServer = ({datacenter, env, type, instance, subproject, tld}) =>
-      if v = @networks.datacenters[datacenter]
-        for nil, vv of v.groups when (vvvv = vv.servers[type]?.instances[instance]) and
-          vvvv.env is env and
-          vvvv.tld is tld and
-          vvvv.subproject is subproject # can both be null
-            return vvvv
-    )(locals)
+    _.merge server,
+      @networks.datacenters[locals.datacenter]
+        .groups[locals.group]
+        .servers[locals.type]
+        .instances[locals.instance] = {}
 
     # plus a few implicitly calculated attributes
     _.merge server, locals # local attributes may be needed first
