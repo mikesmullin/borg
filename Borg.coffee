@@ -3,6 +3,7 @@ fs = require 'fs'
 _ = require 'lodash'
 require 'sugar'
 Logger = require './Logger'
+global.DEBUG = true
 
 module.exports =
 class Borg
@@ -55,64 +56,68 @@ class Borg
     @networks = require path.join @cwd, 'attributes', 'networks'
 
     # flatten network attributes
+    server = {} # NOTICE: server object begins with network attributes matching fqdn
+    found = false
     possible_group = undefined
-    for datacenter, v of @networks.datacenters
-      for group, vv of v.groups
-        for server, vvv of vv.servers
-          for instance, vvvv of vvv.instances
-            _.merge vvvv,
-              @networks.global,
-              _.omit v, 'groups'
-              _.omit vv, 'servers'
-              _.omit vvv, 'instances'
-              vvvv
-            # determine if current server
-            if locals.datacenter is datacenter and
-              locals.env is vvvv.env and
-              locals.tld is vvvv.tld and
-              locals.subproject is vvvv.subproject # can both be null
-                possible_group ||= group unless locals.group # optionally reverse-lookup server group
-                if locals.type is server and
-                  locals.instance is instance
-                    locals.group ||= group
-                    found = true
-                    server = vvvv
+    flattenNetworkAttributes = =>
+      for datacenter, v of @networks.datacenters
+        for group, vv of v.groups
+          for server, vvv of vv.servers
+            for instance, vvvv of vvv.instances
+              _.merge vvvv,
+                @networks.global,
+                _.omit v, 'groups'
+                _.omit vv, 'servers'
+                _.omit vvv, 'instances'
+                vvvv
 
-    unless found?
+              # plus a few implicitly calculated attributes
+              vvvv.datacenter ||= datacenter
+              vvvv.type ||= server
+              vvvv.instance ||= instance
+              vvvv.environment = switch vvvv.env
+                when 'dev' then 'development'
+                when 'stage' then 'staging'
+                when 'prod' then 'production'
+                else vvvv.env
+              vvvv.fqdn = "#{vvvv.datacenter}-#{vvvv.env}-#{vvvv.type}#{vvvv.instance}#{if vvvv.subproject then '-'+vvvv.subproject else ''}.#{vvvv.tld}"
+              vvvv.hostname = "#{vvvv.datacenter}-#{vvvv.env}-#{vvvv.type}#{vvvv.instance}#{if vvvv.subproject then '-'+vvvv.subproject else ''}"
+              for own dev, adapter of vvvv.network when adapter.private
+                vvvv.private_ip = adapter.address
+                break
+
+              # apply details remembered
+              _.merge vvvv, @remember vvvv.fqdn
+
+              # expand function values
+              for key, value of vvvv when typeof value is 'function'
+                vvvv[key] = value.apply server: vvvv
+
+              # determine if current server
+              if locals.datacenter is datacenter and
+                locals.env is vvvv.env and
+                locals.tld is vvvv.tld and
+                locals.subproject is vvvv.subproject # can both be null
+                  possible_group ||= group unless locals.group # optionally reverse-lookup server group
+                  if locals.type is server and
+                    locals.instance is instance
+                      locals.group ||= group
+                      found = true
+                      server = vvvv
+
+    flattenNetworkAttributes()
+    unless found
       @die "Unable to locate server within network attributes." unless possible_group # TODO: could define an automatic group name, but meh.
       console.log "WARNING! Server was not defined in network attributes. Assuming you meant to add it under '#{possible_group}' group."
       @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type] ||= {}
       @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances ||= {}
       @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance] = {} # destructive, but shouldn't exist here
+      flattenNetworkAttributes() # again, now that our server is defined
       server = @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance]
-      _.merge server,
-        @networks.global,
-        _.omit @networks.datacenters[locals.datacenter], 'groups'
-        _.omit @networks.datacenters[locals.datacenter].groups[possible_group], 'servers'
-        _.omit @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type], 'instances'
-        server
 
     #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
 
-    # NOTICE: server object begins with network attributes matching fqdn
-
-    # plus a few implicitly calculated attributes
-    _.merge server, locals # local attributes may be needed first
-    server.environment = switch server.env
-      when 'dev' then 'development'
-      when 'stage' then 'staging'
-      when 'prod' then 'production'
-      else server.env
-    server.fqdn = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
-    server.hostname = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
-    for own dev, adapter of server.network when adapter.private
-      server.private_ip = adapter.address
-      break
-
-    # apply details remembered
-    _.merge server, @remember server.fqdn
-
-    # local attributes override everything else
+    # local attributes override everything else for current server
     _.merge server, locals
 
     console.log "Server attributes:\n"+ JSON.stringify server, null, 2
@@ -173,15 +178,13 @@ class Borg
       @die "locals.fqdn is required by create(). cannot continue."
 
     @server = @getServerObject locals
-    process.exit 1
 
     provision = =>
       console.log 'beginning provision'
       switch @server.provider
         when 'aws'
-          Aws = require './cloud/aws'
-          console.log 'aws loaded'
-          Aws.createInstance @server.fqdn, job, ((id) ->
+          Aws = (require './cloud/aws')(console.log)
+          Aws.createInstance @server.fqdn, @server, ((id) ->
             console.log "procuring instance_id #{id}..."
           ), (instance) -> delay 60*1000*2, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
             locals.public_ip = instance.publicIpAddress
