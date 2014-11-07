@@ -54,26 +54,8 @@ class Borg
     # load network attributes
     @networks = require path.join @cwd, 'attributes', 'networks'
 
-    # optionally reverse-lookup server group by fqdn
-    # TODO: this wont work as-is without expansion. either expand first (twice) or traverse
-    locals.group ||= (findServerGroup = ({datacenter, env, type, instance, subproject, tld}) =>
-      if v = @networks.datacenters[datacenter]
-        for nil, vv of v.groups
-          if vvvv.env is env and
-            vvvv.tld is tld and
-            #(vvvv = vv.servers[type]?.instances[instance]) and
-            vvvv.subproject is subproject # can both be null
-              return group
-    )(locals)
-
-    # if server is not defined, define it as empty
-    console.log "WARNING! Server was not defined in network attributes. Assuming you meant to add it under '#{locals.group}' group."
-    @networks.datacenters[locals.datacenter]
-      .groups[locals.group]
-      .servers[locals.type]
-      .instances[locals.instance] = {}
-
     # flatten network attributes
+    possible_group = undefined
     for datacenter, v of @networks.datacenters
       for group, vv of v.groups
         for server, vvv of vv.servers
@@ -84,15 +66,35 @@ class Borg
               _.omit vv, 'servers'
               _.omit vvv, 'instances'
               vvvv
-    console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
+            # determine if current server
+            if locals.datacenter is datacenter and
+              locals.env is vvvv.env and
+              locals.tld is vvvv.tld and
+              locals.subproject is vvvv.subproject # can both be null
+                possible_group ||= group unless locals.group # optionally reverse-lookup server group
+                if locals.type is server and
+                  locals.instance is instance
+                    locals.group ||= group
+                    found = true
+                    server = vvvv
 
-    # apply network attributes for current server
-    server = {}
-    _.merge server,
-      @networks.datacenters[locals.datacenter]
-        .groups[locals.group]
-        .servers[locals.type]
-        .instances[locals.instance] = {}
+    unless found?
+      @die "Unable to locate server within network attributes." unless possible_group # TODO: could define an automatic group name, but meh.
+      console.log "WARNING! Server was not defined in network attributes. Assuming you meant to add it under '#{possible_group}' group."
+      @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type] ||= {}
+      @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances ||= {}
+      @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance] = {} # destructive, but shouldn't exist here
+      server = @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance]
+      _.merge server,
+        @networks.global,
+        _.omit @networks.datacenters[locals.datacenter], 'groups'
+        _.omit @networks.datacenters[locals.datacenter].groups[possible_group], 'servers'
+        _.omit @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type], 'instances'
+        server
+
+    #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
+
+    # NOTICE: server object begins with network attributes matching fqdn
 
     # plus a few implicitly calculated attributes
     _.merge server, locals # local attributes may be needed first
@@ -171,6 +173,7 @@ class Borg
       @die "locals.fqdn is required by create(). cannot continue."
 
     @server = @getServerObject locals
+    process.exit 1
 
     provision = =>
       console.log 'beginning provision'
