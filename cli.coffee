@@ -3,7 +3,10 @@ borg = new Borg
 
 switch cmd = process.argv[2]
   when 'create', 'assimilate', 'assemble', 'cmd'
-    borg[cmd] fqdn: process.argv[3], ->
+    borg[cmd] fqdn: process.argv[3], (err) ->
+      if err
+        process.stderr.write 'Error: '+err+"\n"
+        process.exit 1
   when 'test'
     (require './Test')()
   when '-V', '--version', 'version'

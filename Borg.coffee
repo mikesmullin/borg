@@ -116,6 +116,8 @@ class Borg
           break
 
         # apply details remembered
+        # TODO: merge all instances listed from memory.json into @network,
+        #         e.g., so undefined servers can be iterated with @eachServer()
         _.merge server, @remember server.fqdn
 
         # expand function values
@@ -230,21 +232,15 @@ class Borg
 
   assimilate: (locals, cb) ->
     locals.ssh ||= {}
-    locals.ssh.port ||= 22
+    locals.ssh.user ||= 'ubuntu'
 
     # load server attributes for named host
     @server = @getServerObject locals
+    locals.ssh.host ||= @server.public_ip or @server.private_ip
+    if @server.provider is 'aws'
+      locals.ssh.key ||= ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{@server.aws_key}"
 
-    # connect via ssh
-    Ssh = require './Ssh'
-    @ssh = new Ssh locals.ssh, (err) =>
-      return cb err if err
-      @finally (err) =>
-        @die err if err
-        @ssh.close()
-        setTimeout (-> cb null), 100
-
-    # all resources come from a separate vendor repository
+    # the most basic resources come from a vendor repository
     @import @cwd, 'scripts', 'vendor', 'resources'
 
     # begin chaining script execution callbacks
@@ -263,33 +259,44 @@ class Borg
     for script in locals.scripts
       @import @cwd, 'scripts', script
 
-    # finish and execute chain
     console.log "Server attributes after scripts:\n"+ JSON.stringify @server, null, 2
+
+    # connect via ssh
+    Ssh = require './Ssh'
+    @ssh = new Ssh locals.ssh, (err) =>
+      return cb err if err
+      # finish and execute chain
+      @finally (err) =>
+        return cb err if err
+        @ssh.close()
+        delay 100, ->
+          console.log "Assimilated #{locals.fqdn or locals.ssh.host}."
+          cb null
+
 
   assemble: (locals, cb) ->
     @provision locals, =>
       @assimilate locals, cb
 
+
+
+
+
+
   # TODO: test this and make it work again
-  cmd: (target, options, cb) ->
-    console.log arguments
-    # TODO: reimplement regex matching when we want to match on more than one hostname
-    ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, ->
-      if err then return Logger.out host: target.host, type: 'err', err
-      ssh.cmd options.eol, {}, (err) ->
-        ssh.close()
-        cb()
+  #cmd: (target, options, cb) ->
+  #  console.log arguments
+  #  # TODO: reimplement regex matching when we want to match on more than one hostname
+  #  ssh = new Ssh user: target.user, pass: target.pass, host: target.host, port: target.port, ->
+  #    if err then return Logger.out host: target.host, type: 'err', err
+  #    ssh.cmd options.eol, {}, (err) ->
+  #      ssh.close()
+  #      cb()
 
-
-
-
-
-
-
-# TODO: support:
-# borg cmd --sudo u:p@localhost:223 -- test blah
-# borg cmd --sudo u:p@localhost:223 test blah
-# borg assimilate developer:tunafish@10.1.10.24:22
+  # TODO: support the following command syntax:
+  #   borg cmd --sudo u:p@localhost:223 -- test blah
+  #   borg cmd --sudo u:p@localhost:223 test blah
+  #   borg assimilate developer:tunafish@10.1.10.24:22
 
 #class OldBorg
 #  constructor: (cmd) ->
@@ -327,4 +334,3 @@ class Borg
 #      else
 #        Logger.out 'all done.'
 #        process.exit 0
-#
