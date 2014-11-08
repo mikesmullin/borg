@@ -18,6 +18,8 @@ class Borg
 
   constructor: (o) ->
     @cwd = o?.cwd or process.cwd()
+    @networks = {}
+    @server = {}
 
   # async flow control
   _Q: []
@@ -40,10 +42,27 @@ class Borg
       cb()
 
   # attributes
-  networks: {}
-  server: {}
+  networks: null
+  server: null
   define: (o) => @server = _.merge @server, o
   default: (o) => @server = _.merge o, @server
+
+  eachServer: (each_cb) ->
+    for datacenter, v of @networks.datacenters
+      for group, vv of v.groups
+        for type, vvv of vv.servers
+          for instance, vvvv of vvv.instances
+            return false if false is each_cb({
+              datacenter: datacenter
+              group: group
+              type: type
+              instance: instance
+              env: vvvv.env
+              tld: vvvv.tld
+              subproject: vvvv.subproject
+              server: vvvv
+            })
+
 
   # compile all attributes into a single @server object hierarchy
   getServerObject: (locals) ->
@@ -68,54 +87,51 @@ class Borg
     @networks = require path.join @cwd, 'attributes', 'networks'
 
     # flatten network attributes
-    server = {} # NOTICE: server object begins with network attributes matching fqdn
+    _server = {} # NOTICE: server object begins with network attributes matching fqdn
     found = false
     possible_group = undefined
     flattenNetworkAttributes = =>
-      for datacenter, v of @networks.datacenters
-        for group, vv of v.groups
-          for type, vvv of vv.servers
-            for instance, vvvv of vvv.instances
-              _.merge vvvv,
-                @networks.global,
-                _.omit v, 'groups'
-                _.omit vv, 'servers'
-                _.omit vvv, 'instances'
-                vvvv
+      @eachServer ({ datacenter, group, type, instance, env, tld, subproject, server }) =>
+        _.merge server,
+          @networks.global,
+          _.omit @networks.datacenters[datacenter], 'groups'
+          _.omit @networks.datacenters[datacenter].groups[group], 'servers'
+          _.omit @networks.datacenters[datacenter].groups[group].servers[type], 'instances'
+          server
 
-              # plus a few implicitly calculated attributes
-              vvvv.datacenter ||= datacenter
-              vvvv.type ||= type
-              vvvv.instance ||= instance
-              vvvv.environment = switch vvvv.env
-                when 'dev' then 'development'
-                when 'stage' then 'staging'
-                when 'prod' then 'production'
-                else vvvv.env
-              vvvv.fqdn = "#{vvvv.datacenter}-#{vvvv.env}-#{vvvv.type}#{vvvv.instance}#{if vvvv.subproject then '-'+vvvv.subproject else ''}.#{vvvv.tld}"
-              vvvv.hostname = "#{vvvv.datacenter}-#{vvvv.env}-#{vvvv.type}#{vvvv.instance}#{if vvvv.subproject then '-'+vvvv.subproject else ''}"
-              for own dev, adapter of vvvv.network when adapter.private
-                vvvv.private_ip = adapter.address
-                break
+        # plus a few implicitly calculated attributes
+        server.datacenter ||= datacenter
+        server.group ||= group
+        server.type ||= type
+        server.instance ||= instance
+        server.environment = switch server.env
+          when 'dev' then 'development'
+          when 'stage' then 'staging'
+          when 'prod' then 'production'
+          else server.env
+        server.fqdn = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
+        server.hostname = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
+        for own dev, adapter of server.network when adapter.private
+          server.private_ip = adapter.address
+          break
 
-              # apply details remembered
-              _.merge vvvv, @remember vvvv.fqdn
+        # apply details remembered
+        _.merge server, @remember server.fqdn
 
-              # expand function values
-              for key, value of vvvv when typeof value is 'function'
-                vvvv[key] = value.apply server: vvvv
+        # expand function values
+        for key, value of server when typeof value is 'function'
+          server[key] = value.apply server: server
 
-              # determine if current server
-              if locals.datacenter is datacenter and
-                locals.env is vvvv.env and
-                locals.tld is vvvv.tld and
-                locals.subproject is vvvv.subproject # can both be null
-                  possible_group ||= group unless locals.group # optionally reverse-lookup server group
-                  if locals.type is type and
-                    locals.instance is instance
-                      locals.group ||= group
-                      found = true
-                      server = vvvv
+        # determine if current server
+        if locals.datacenter is datacenter and
+          locals.env is server.env and
+          locals.tld is server.tld and
+          locals.subproject is server.subproject # can both be null
+            possible_group ||= group unless locals.group # optionally reverse-lookup server group
+            if locals.type is type and
+              locals.instance is instance
+                found = true
+                _server = server
 
     flattenNetworkAttributes()
     unless found
@@ -125,16 +141,16 @@ class Borg
       @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances ||= {}
       @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance] = {} # destructive, but shouldn't exist here
       flattenNetworkAttributes() # again, now that our server is defined
-      server = @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance]
+      _server = @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance]
 
     #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
 
     # local attributes override everything else for current server
-    _.merge server, locals
+    _.merge _server, locals
 
-    console.log "Server attributes:\n"+ JSON.stringify server, null, 2
+    console.log "Server attributes before scripts:\n"+ JSON.stringify _server, null, 2
 
-    return server
+    return _server
 
   # scripts
   import: (paths...) ->
@@ -232,12 +248,23 @@ class Borg
     @import @cwd, 'scripts', 'vendor', 'resources'
 
     # begin chaining script execution callbacks
-    locals.scripts ||= [ 'servers/'+locals.ssh.host ]
+    #locals.scripts ||= [ 'servers/'+locals.ssh.host ]
+    locals.scripts ||= []
+
+    # find matching role(s)
+    roles = fs.readdirSync path.join @cwd, 'scripts', 'roles'
+    for role in roles
+      rx = role.replace(/\.coffee$/, '').replace(/\./g, '\\.').replace(/_/g, '.+')
+      console.log rx: rx, fqdn: locals.fqdn
+      unless null is locals.fqdn.match rx
+        locals.scripts.push path.join 'roles', role
+        break # for now, only take the first match
+
     for script in locals.scripts
       @import @cwd, 'scripts', script
 
     # finish and execute chain
-    console.log 'server:'+ JSON.stringify @server, null, 2
+    console.log "Server attributes after scripts:\n"+ JSON.stringify @server, null, 2
 
   assemble: (locals, cb) ->
     @provision locals, =>
