@@ -251,10 +251,11 @@ class Borg
     roles = fs.readdirSync path.join @cwd, 'scripts', 'roles'
     for role in roles
       rx = role.replace(/\.coffee$/, '').replace(/\./g, '\\.').replace(/_/g, '.+')
-      console.log rx: rx, fqdn: locals.fqdn
       unless null is locals.fqdn.match rx
         locals.scripts.push path.join 'roles', role
         break # for now, only take the first match
+    unless locals.scripts.length
+      local.scripts.push path.join 'roles', 'blank'
 
     for script in locals.scripts
       @import @cwd, 'scripts', script
