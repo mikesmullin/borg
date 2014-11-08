@@ -1,32 +1,24 @@
 Borg = require './Borg'
 borg = new Borg
 
-switch cmd = process.argv[2]
-  when 'create', 'assimilate', 'assemble', 'cmd'
-    borg[cmd] fqdn: process.argv[3], (err) ->
-      if err
-        process.stderr.write 'Error: '+err+"\n"
-        process.exit 1
-  when 'test'
-    (require './Test')()
+switch cmd = process.argv[1]
   when '-V', '--version', 'version'
     pkg = require '../package.json'
     console.log """
     borg v#{pkg.version}
 
     """
-  #when '-h', '--help', 'help'
-  else
-    switch process.argv[3]
-      when 'rekey'
-        console.log """
-        Usage: borg rekey [options] <user:password@host ...>
+  when 'create', 'assimilate', 'assemble', 'cmd'
+    borg[cmd] fqdn: process.argv[2], (err) ->
+      if err
+        process.stderr.write 'Error: '+err+"\n"
+        process.exit 1
 
-        Options:
+  when 'test'
+    (require './Test')()
 
-          -i  identity file path
-
-        """
+  else # when '-h', '--help', 'help'
+    switch process.argv[2]
       when 'assimilate'
         console.log """
         Usage: borg assimilate [options] <user:password@host ...>
@@ -42,24 +34,29 @@ switch cmd = process.argv[2]
 
         """
       when 'test'
-        switch process.argv[4]
+        switch process.argv[3]
           when 'list' then 1
-          #when 'create'
-          #when 'assimilate'
-          #when 'use'
-          #when 'login'
-          #when 'destroy'
+          when 'create'
+            console.log 'Not implemented, yet.'
+          when 'assimilate'
+            console.log 'Not implemented, yet.'
+          when 'checkup'
+            console.log 'Not implemented, yet.'
+          when 'login'
+            console.log 'Not implemented, yet.'
+          when 'destroy'
+            console.log 'Not implemented, yet.'
           else
             console.log """
             Usage: borg test <subcommand>
 
             Subcommands:
 
-              list                list all machines
+              list                enumerate servers defined in networks
               create              create localhost virtualbox machine
               assimilate          assimilate the localhost vm
-              use                 test successful assimilation
-              login               open ssh session
+              checkup             test successful assimilation
+              login               open ssh sessions to matching hosts
               destroy             delete localhost vm
 
             """
@@ -70,10 +67,8 @@ switch cmd = process.argv[2]
         Commands:
 
           create      construct hosts in the cloud via provider apis
-          rekey       copy ssh public key to authorized_hosts on remote host(s)
           assimilate  execute scripted commands via ssh on hosts
-          assemble    provision and assimilate hosts
-          cmd         bulk execute command on hosts
+          assemble    create and assimilate hosts
           test        simulate assimilation on localhost
 
         Options:

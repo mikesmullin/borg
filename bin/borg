@@ -14,15 +14,10 @@ if [[ $1 == 'debug' ]]; then
   #         breakpoint _you_ set, if any. in order to see that you have to 'Step over' once.
   node-inspector & coffee --nodejs --debug-brk $*
 else
-  if [[ $# -eq 0 ]]; then
-    echo "You must specify a .coffee file to evaluate as the first argument."
-    exit 1
-  fi
-  # NOTICE: expects user to name the .coffee script to run.
-  #         therefore this script does nothing other than reserve the borg executable namespace
-  #         on the user's system, and makes debugging easier.
-  # NOTICE: if you are using borg in cli mode, instead of as a library for some larger application,
-  #         the .coffee script named must have the following line at the top:
-  #         require 'borg/cli'
-  coffee $*
+  # NOTICE: places a temporary bootstrap .coffee file in the cwd.
+  #         this makes debugging easier.
+  TMP=.cli.coffee
+  test -f $TMP || echo "require 'borg/cli'" > $TMP
+  coffee $TMP $*
+  rm $TMP
 fi
