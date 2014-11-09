@@ -18,8 +18,8 @@ class Borg
 
   constructor: (o) ->
     @cwd = o?.cwd or process.cwd()
-    @networks = {}
-    @server = {}
+    @networks = require path.join @cwd, 'attributes', 'networks'
+    @server = new Object
 
   # async flow control
   _Q: []
@@ -63,96 +63,91 @@ class Borg
               server: vvvv
             })
 
+  flattenNetworkAttributes: (locals=null) ->
+    _server = {}
+    found = false
+    possible_group = undefined
+    @eachServer ({ datacenter, group, type, instance, env, tld, subproject, server }) =>
+      _.merge server,
+        @networks.global,
+        _.omit @networks.datacenters[datacenter], 'groups'
+        _.omit @networks.datacenters[datacenter].groups[group], 'servers'
+        _.omit @networks.datacenters[datacenter].groups[group].servers[type], 'instances'
+        server
+
+      # plus a few implicitly calculated attributes
+      server.datacenter ||= datacenter
+      server.group ||= group
+      server.type ||= type
+      server.instance ||= instance
+      server.environment = switch server.env
+        when 'dev' then 'development'
+        when 'stage' then 'staging'
+        when 'prod' then 'production'
+        else server.env
+      server.fqdn = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
+      server.hostname = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
+      for own dev, adapter of server.network when adapter.private and adapter.address
+        server.private_ip = adapter.address
+        break
+
+      # apply details remembered
+      # TODO: merge all instances listed from memory.json into @network,
+      #         e.g., so undefined servers can be iterated with @eachServer()
+      _.merge server, @remember server.fqdn
+
+      # expand function values
+      for key, value of server when typeof value is 'function'
+        server[key] = value.apply server: server
+
+      # determine if current server
+      if locals isnt null and
+        locals.datacenter is datacenter and
+        locals.env is server.env and
+        locals.tld is server.tld and
+        locals.subproject is server.subproject # can both be null
+          possible_group ||= group unless locals.group # optionally reverse-lookup server group
+          if locals.type is type and
+            locals.instance is instance
+              found = true
+              _server = server
+    return found: found, server: _server, possible_group: possible_group
 
   # compile all attributes into a single @server object hierarchy
   getServerObject: (locals) ->
-    locals ||= {}
+    # helpful for debugging
+    scrubbed_locals = _.cloneDeep locals
+    scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
+    scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
+    console.log "You passed locals:\n"+JSON.stringify scrubbed_locals
+
+    # parse fqdn into name parts
     if locals.fqdn
       if null isnt matches = locals.fqdn.match /^([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(-([a-z]+))?(\.(\w+\.[a-z]{2,3}))$/i
         [nil, locals.datacenter, locals.env, locals.type, locals.instance, nil, locals.subproject, nil, locals.tld] = matches
       else
         @die "unrecognized fqdn format: #{locals.fqdn}. should be {datacenter}-{env}-{type}{instance}-{subproject}{tld}"
-    else if locals.datacenter and locals.env and locals.type and locals.instance and locals.tld
-      locals.fqdn = "#{locals.datacenter}-#{locals.env}-#{locals.type}#{locals.instance}.#{locals.tld}"
-    else
-      @die "locals.fqdn is required. cannot continue."
+    else unless locals.datacenter and locals.env and locals.type and locals.instance and locals.tld
+      @die 'missing required locals.fqdn or all of locals: datacenter, env, type, instance, tld. cannot continue.'
 
-    # helpful for debugging
-    scrubbed_locals = _.cloneDeep locals
-    scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
-    scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
-    console.log "You passed:\n"+JSON.stringify scrubbed_locals
-
-    # load network attributes
-    @networks = require path.join @cwd, 'attributes', 'networks'
-
-    # flatten network attributes
-    _server = {} # NOTICE: server object begins with network attributes matching fqdn
-    found = false
-    possible_group = undefined
-    flattenNetworkAttributes = =>
-      @eachServer ({ datacenter, group, type, instance, env, tld, subproject, server }) =>
-        _.merge server,
-          @networks.global,
-          _.omit @networks.datacenters[datacenter], 'groups'
-          _.omit @networks.datacenters[datacenter].groups[group], 'servers'
-          _.omit @networks.datacenters[datacenter].groups[group].servers[type], 'instances'
-          server
-
-        # plus a few implicitly calculated attributes
-        server.datacenter ||= datacenter
-        server.group ||= group
-        server.type ||= type
-        server.instance ||= instance
-        server.environment = switch server.env
-          when 'dev' then 'development'
-          when 'stage' then 'staging'
-          when 'prod' then 'production'
-          else server.env
-        server.fqdn = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
-        server.hostname = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
-        for own dev, adapter of server.network when adapter.private
-          server.private_ip = adapter.address
-          break
-
-        # apply details remembered
-        # TODO: merge all instances listed from memory.json into @network,
-        #         e.g., so undefined servers can be iterated with @eachServer()
-        _.merge server, @remember server.fqdn
-
-        # expand function values
-        for key, value of server when typeof value is 'function'
-          server[key] = value.apply server: server
-
-        # determine if current server
-        if locals.datacenter is datacenter and
-          locals.env is server.env and
-          locals.tld is server.tld and
-          locals.subproject is server.subproject # can both be null
-            possible_group ||= group unless locals.group # optionally reverse-lookup server group
-            if locals.type is type and
-              locals.instance is instance
-                found = true
-                _server = server
-
-    flattenNetworkAttributes()
+    # server object begins with network attributes from matching fqdn
+    { found,  server, possible_group } = @flattenNetworkAttributes locals
     unless found
       @die "Unable to locate server within network attributes." unless possible_group # TODO: could define an automatic group name, but meh.
       console.log "WARNING! Server was not defined in network attributes. Assuming you meant to add it under '#{possible_group}' group."
       @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type] ||= {}
       @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances ||= {}
       @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance] = {} # destructive, but shouldn't exist here
-      flattenNetworkAttributes() # again, now that our server is defined
-      _server = @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance]
+      { server } = @flattenNetworkAttributes locals # again, now that our server is defined
 
     #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
 
     # local attributes override everything else for current server
-    _.merge _server, locals
+    _.merge server, locals
 
-    console.log "Server attributes before scripts:\n"+ JSON.stringify _server, null, 2
+    console.log "Server attributes before scripts:\n"+ JSON.stringify server, null, 2
 
-    return _server
+    return server
 
   # scripts
   import: (paths...) ->

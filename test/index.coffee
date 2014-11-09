@@ -2,51 +2,26 @@ require 'sugar'
 _     = require 'lodash'
 path  = require 'path'
 async = require 'async2'
-delay = (s, f) -> setTimeout f, s
+{ delay } = require '../util'
 Borg = require '../Borg'
 borg = new Borg
 
-#{networks, datacenters, clients, each_machine_instance, get_instance_attrs} = require './Network'
-
 module.exports = ->
-  vbox_conf = require path.join process.cwd(), 'attributes', 'virtualbox'
-  { boxes } = vbox_conf
-  VBoxProxyClient = require '../cloud/VBoxProxyClient'
-  client = new VBoxProxyClient()
-  vboxmanage = (args, cb) ->
-    console.log JSON.stringify args
-    #return cb()
-    client.connect vbox_conf.host, vbox_conf.port, ->
-      client.command args,
-        spawn: (pid) ->
-          console.log 'pid', pid
-          return
-        stdout: (data) ->
-          console.log 'stdout', data
-          return
-        stderr: (data) ->
-          console.log 'stderr', data
-          return
-        error: (err) ->
-          console.log 'error', err
-          return
-        close: (code) ->
-          console.log 'close', code
-          if code is 0
-            console.log 'success.'
-          else
-            console.log 'fail!'
-          client.close()
-          cb() if typeof cb is 'function'
-          return
-      return
-    return
+  cloud_provider = 'aws' # hard-coded for now
 
   switch process.argv[3]
     when 'list'
-      each_machine_instance ({ machine, instance }) ->
-        attrs = get_instance_attrs "#{machine}#{instance}"
-        console.log attrs._name
+      borg.flattenNetworkAttributes()
+      last_group = undefined
+      count = 0
+      borg.eachServer ({ server }) ->
+        if null isnt server.fqdn.match new RegExp process.argv[4], 'g'
+          count++
+          if server.group isnt last_group
+            console.log "\n# #{server.datacenter} #{server.group}"
+            last_group = server.group
+          console.log "#{server.private_ip or server.public_ip or '#'} #{server.fqdn}"
+      console.log "\n#{count} server(s) found.\n"
 
     when 'create'
       attrs = get_instance_attrs process.argv[4]

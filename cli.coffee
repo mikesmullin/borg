@@ -18,7 +18,7 @@ Usage: borg test <subcommand>
 
 Subcommands:
 
-  list                enumerate servers defined in networks
+  list                enumerate matching network-defined hosts
   create              create localhost virtualbox machine
   assimilate          assimilate the localhost vm
   checkup             test successful assimilation
@@ -53,7 +53,7 @@ switch cmd = process.argv[2]
 
   when 'test'
     return console.log BORG_HELP_TEST if process.argv.length <= 3
-    (require './test')()
+    (require './test')(borg)
 
   else # when '-h', '--help', 'help'
     switch process.argv[3]
