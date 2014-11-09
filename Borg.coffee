@@ -168,12 +168,12 @@ class Borg
     unless USING_CLI
       process.stderr.write "Error: tty stdin required to answer, but not using cli.\n"
       return fail_cb()
-    process.stdin.on 'readable', confirm_cb = ->
+    process.stdin.on 'readable', ->
       chunk = process.stdin.read()
       if chunk isnt null
-        process.stdin.removeListener 'readable', confirm_cb
-        process.stdout.pause()
-        return fail_cb() if chunk.toLowerCase() isnt "y\n"
+        process.stdin.pause()
+        process.stdin.removeAllListeners 'readable'
+        return fail_cb() if (''+chunk).toLowerCase() isnt "y\n"
         cb()
     process.stdin.resume()
 
@@ -194,7 +194,7 @@ class Borg
       (require p).apply @
 
   # save instance details to disk for future reference
-  remember: (xpath, value=undefined) ->
+  remember: (xpath, value) ->
     # load
     memory_file = path.join process.cwd(), 'attributes', 'memory.json'
     delete require.cache[require.resolve memory_file] # invalidate cache
@@ -210,8 +210,11 @@ class Borg
         # operate
         if value is undefined # read
           return pointer[key]
-        else # write
-          pointer[key] = value
+        else
+          if value is null # delete
+            delete pointer[key]
+          else # write
+            pointer[key] = value
           fs.writeFileSync memory_file, JSON.stringify memory, null, 2
           return
       else
@@ -319,6 +322,49 @@ class Borg
   assemble: (locals, cb) ->
     @provision locals, (locals) =>
       @assimilate locals, cb
+
+
+  destroy: (locals, cb) ->
+    @server = @getServerObject locals
+
+    terminate = =>
+      switch @server.provider
+        when 'aws'
+          Aws = (require './cloud/aws')(console.log)
+          Aws.destroyInstance @server, next
+
+    next = =>
+      @remember "/#{locals.fqdn}", null # forget server
+      console.log "Destroyed #{locals.fqdn}."
+      cb()
+
+    console.log "asking #{@server.fqdn} to terminate..."
+    if USING_CLI
+      @cliConfirm "Proceed?", terminate
+    else
+      terminate()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

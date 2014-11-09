@@ -72,12 +72,13 @@ module.exports = (log) -> Aws =
             cb res
       waitForInstanceToBecomeReady()
 
-  destroyInstance: (instanceId, locals, cb) ->
+  destroyInstance: (locals, cb) ->
     Aws.jsonCli """
     aws ec2 terminate-instances \
       --region #{locals.aws_region} \
-      --instance-id #{instanceId} \
+      --instance-id #{locals.aws_instance_id} \
       ;
     """, (err, data) ->
+      throw err if err
       cb()
 

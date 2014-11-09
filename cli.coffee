@@ -12,6 +12,7 @@ Commands:
   create      construct hosts in the cloud via provider apis
   assimilate  execute scripted commands via ssh on hosts
   assemble    alias for create + assimilate
+  destroy     terminate existing hosts
   test        simulate assimilation on localhost
   version     display currently installed version
   help        display more information about a command
@@ -32,7 +33,7 @@ Subcommands:
   create      construct new test hosts
   assimilate  execute scripts on existing test hosts
   assemble    alias for create + assimilate
-  destroy     delete existing test hosts
+  destroy     terminate existing test hosts
   checkup     execute test suite against existing hosts
   login       open ssh sessions to matching hosts
 
@@ -63,7 +64,7 @@ switch cmd = process.argv[2]
     pkg = require './package.json'
     console.log "borg v#{pkg.version}\n"
 
-  when 'list', 'create', 'assimilate', 'assemble'
+  when 'list', 'create', 'assimilate', 'assemble', 'destroy'
     Borg = require './Borg'
     borg = new Borg
     borg[cmd] fqdn: process.argv[3], (err) ->

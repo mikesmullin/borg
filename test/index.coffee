@@ -25,6 +25,8 @@ module.exports = ->
       for server in servers
         console.log "  #{if hide_ips then '' else server.public_ip or server.private_ip or '#'} #{server.fqdn}"
       borg.cliConfirm "Proceed?", -> cb servers
+    else if require_test_match
+      process.stderr.write "\n0 existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
     else
       console.log "Assuming this is a new network server definition."
       cb [ fqdn: "test-"+process.argv[4] ]
@@ -55,7 +57,7 @@ module.exports = ->
           process.exit 0
 
     when 'assimilate'
-      # TODO: handle exception: can't test assimilate instances that we don't have memory of
+      # NOTICE: can't test assimilate instances that we don't have memory of
       confirmSelection require_test_match: true, action: 're-assimilated', (servers) => for server in servers
         flow = new async
         for server in servers
@@ -81,8 +83,17 @@ module.exports = ->
       return
 
     when 'destroy'
-      # TODO: lookup server.aws_instance_id and use cloud/aws:destroyInstance()
-      # TODO: delete from memory.json
+      # NOTICE: can't test assimilate instances that we don't have memory of
+      confirmSelection require_test_match: true, action: 'permanently destroyed', (servers) => for server in servers
+        flow = new async
+        for server in servers
+          ((server) ->
+            # TODO introduce parallel option, with intercepted + colorized log output
+            flow.serial (next) ->
+              borg.destroy fqdn: server.fqdn, next
+          )(server)
+        flow.go ->
+          process.exit 0
       return
 
   return
