@@ -131,7 +131,7 @@ class Borg
     return server
 
   # compile all attributes into a single @server object hierarchy
-  getServerObject: (locals) ->
+  getServerObject: (locals, cb) ->
     # helpful for debugging
     scrubbed_locals = _.cloneDeep locals
     scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
@@ -147,18 +147,16 @@ class Borg
 
     # server object begins with network attributes from matching fqdn
     { found,  server, possible_group } = @flattenNetworkAttributes locals
-    unless found
+    if found
+      return cb server
+    else
       @die "Unable to locate server within network attributes." unless possible_group # TODO: could define an automatic group name, but meh.
       console.log "WARNING! Server was not defined in network attributes. Will add it under '#{possible_group}' group."
-      #@cliConfirm "Proceed?", =>
-      locals.group = possible_group
-      @defineNetworkServer locals
-      { server } = @flattenNetworkAttributes locals # again, now that our server is defined
-
-    #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
-    console.log "Server attributes before scripts:\n"+ JSON.stringify server, null, 2
-
-    return server
+      @cliConfirm "Proceed?", =>
+        locals.group = possible_group
+        @defineNetworkServer locals
+        { server } = @flattenNetworkAttributes locals # again, now that our server is defined
+        return cb server
 
   cliConfirm: (question, cb) ->
     fail_cb = ->
@@ -238,40 +236,41 @@ class Borg
     process.stderr.write "\n#{count} network server definition(s) found.\n\n"
 
   create: (locals, cb) ->
-    @server = @getServerObject locals
+    @getServerObject locals, (@server) =>
+      #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
 
-    provision = =>
-      console.log "asking #{@server.provider} to create..."
-      switch @server.provider
-        when 'aws'
-          Aws = (require './cloud/aws')(console.log)
-          Aws.createInstance @server.fqdn, @server, ((id) ->
-            console.log "got instance_id #{id}..."
-          ), (instance) => delay 60*1000*1, => # needs time to initialize or ssh connect and cmds will hang indefinitely
-            @remember "/#{locals.fqdn}/aws_instance_id", instance.instanceId
-            locals.public_ip = instance.publicIpAddress
-            locals.private_ip = instance.privateIpAddress
-            next()
+      provision = =>
+        console.log "asking #{@server.provider} to create..."
+        switch @server.provider
+          when 'aws'
+            Aws = (require './cloud/aws')(console.log)
+            Aws.createInstance @server.fqdn, @server, ((id) =>
+              console.log "got instance_id #{id}..."
+              @remember "/#{locals.fqdn}/aws_instance_id", locals.aws_instance_id = id
+            ), (instance) -> delay 60*1000*1, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
+              locals.public_ip = instance.publicIpAddress
+              locals.private_ip = instance.privateIpAddress
+              next()
 
-    next = =>
-      @remember "/#{locals.fqdn}/private_ip", locals.private_ip
-      @remember "/#{locals.fqdn}/public_ip", locals.public_ip
-      @remember "/#{locals.fqdn}/group", locals.group
+      next = =>
+        @remember "/#{locals.fqdn}/private_ip", locals.private_ip
+        @remember "/#{locals.fqdn}/public_ip", locals.public_ip
+        @remember "/#{locals.fqdn}/group", locals.group
 
-      # build remaining locals to match would-be calculated values
-      # TODO: possibly call createServerObject() again here
-      locals.network ||= {}
-      locals.network.eth1 ||= {}
-      locals.network.eth1.address = locals.private_ip
-      locals.ssh ||= {}
-      locals.ssh.host = locals.public_ip or locals.private_ip
+        # build remaining locals to match would-be calculated values
+        # TODO: possibly call createServerObject() again here
+        locals.network ||= {}
+        locals.network.eth1 ||= {}
+        locals.network.eth1.address = locals.private_ip
+        locals.ssh ||= {}
+        locals.ssh.host = locals.public_ip or locals.private_ip
 
-      console.log "Created new host:\n#{locals.ssh.host} #{locals.fqdn}\n"
+        console.log "Created new host:\n#{locals.ssh.host} #{locals.fqdn}\n"
 
-      # optionally chain to assimilate
-      cb locals
+        # optionally chain to assimilate
+        cb locals
 
-    provision()
+      provision()
 
 
   assimilate: (locals, cb) ->
@@ -279,44 +278,46 @@ class Borg
     locals.ssh.user ||= 'ubuntu'
 
     # load server attributes for named host
-    @server = @getServerObject locals
-    locals.ssh.host ||= @server.public_ip or @server.private_ip
-    if @server.provider is 'aws'
-      locals.ssh.key ||= ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{@server.aws_key}"
+    @getServerObject locals, (@server) =>
+      locals.ssh.host ||= @server.public_ip or @server.private_ip
+      if @server.provider is 'aws'
+        locals.ssh.key ||= ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{@server.aws_key}"
 
-    # the most basic resources come from a vendor repository
-    @import @cwd, 'scripts', 'vendor', 'resources'
+      console.log "Server attributes before scripts:\n"+ JSON.stringify server, null, 2
 
-    # begin chaining script execution callbacks
-    #locals.scripts ||= [ 'servers/'+locals.ssh.host ]
-    locals.scripts ||= []
+      # the most basic resources come from a vendor repository
+      @import @cwd, 'scripts', 'vendor', 'resources'
 
-    # find matching role(s)
-    roles = fs.readdirSync path.join @cwd, 'scripts', 'roles'
-    for role in roles
-      rx = role.replace(/\.coffee$/, '').replace(/\./g, '\\.').replace(/_/g, '.+')
-      unless null is locals.fqdn.match rx
-        locals.scripts.push path.join 'roles', role
-        break # for now, only take the first match
-    unless locals.scripts.length
-      local.scripts.push path.join 'roles', 'blank'
+      # begin chaining script execution callbacks
+      #locals.scripts ||= [ 'servers/'+locals.ssh.host ]
+      locals.scripts ||= []
 
-    for script in locals.scripts
-      @import @cwd, 'scripts', script
+      # find matching role(s)
+      roles = fs.readdirSync path.join @cwd, 'scripts', 'roles'
+      for role in roles
+        rx = role.replace(/\.coffee$/, '').replace(/\./g, '\\.').replace(/_/g, '.+')
+        unless null is locals.fqdn.match rx
+          locals.scripts.push path.join 'roles', role
+          break # for now, only take the first match
+      unless locals.scripts.length
+        local.scripts.push path.join 'roles', 'blank'
 
-    console.log "Server attributes after scripts:\n"+ JSON.stringify @server, null, 2
+      for script in locals.scripts
+        @import @cwd, 'scripts', script
 
-    # connect via ssh
-    Ssh = require './Ssh'
-    @ssh = new Ssh locals.ssh, (err) =>
-      return cb err if err
-      # finish and execute chain
-      @finally (err) =>
+      console.log "Server attributes after scripts:\n"+ JSON.stringify @server, null, 2
+
+      # connect via ssh
+      Ssh = require './Ssh'
+      @ssh = new Ssh locals.ssh, (err) =>
         return cb err if err
-        @ssh.close()
-        delay 100, ->
-          console.log "Assimilated #{locals.fqdn or locals.ssh.host}."
-          cb null
+        # finish and execute chain
+        @finally (err) =>
+          return cb err if err
+          @ssh.close()
+          delay 100, ->
+            console.log "Assimilated #{locals.fqdn or locals.ssh.host}."
+            cb null
 
 
   assemble: (locals, cb) ->
@@ -325,24 +326,23 @@ class Borg
 
 
   destroy: (locals, cb) ->
-    @server = @getServerObject locals
+    @getServerObject locals, (@server) =>
+      terminate = =>
+        switch @server.provider
+          when 'aws'
+            Aws = (require './cloud/aws')(console.log)
+            Aws.destroyInstance @server, next
 
-    terminate = =>
-      switch @server.provider
-        when 'aws'
-          Aws = (require './cloud/aws')(console.log)
-          Aws.destroyInstance @server, next
+      next = =>
+        @remember "/#{locals.fqdn}", null # forget server
+        console.log "Destroyed #{locals.fqdn}."
+        cb()
 
-    next = =>
-      @remember "/#{locals.fqdn}", null # forget server
-      console.log "Destroyed #{locals.fqdn}."
-      cb()
-
-    console.log "asking #{@server.fqdn} to terminate..."
-    if USING_CLI
-      @cliConfirm "Proceed?", terminate
-    else
-      terminate()
+      console.log "asking #{@server.fqdn} to terminate..."
+      if USING_CLI
+        @cliConfirm "Proceed?", terminate
+      else
+        terminate()
 
 
 

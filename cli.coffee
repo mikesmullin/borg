@@ -32,10 +32,10 @@ Subcommands:
   list        enumerate available test hosts
   create      construct new test hosts
   assimilate  execute scripts on existing test hosts
-  assemble    alias for create + assimilate
-  destroy     terminate existing test hosts
   checkup     execute test suite against existing hosts
+  assemble    alias for create + assimilate + checkup
   login       open ssh sessions to matching hosts
+  destroy     terminate existing test hosts
 
 FQDN RegEx:
 

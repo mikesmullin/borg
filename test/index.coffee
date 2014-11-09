@@ -17,8 +17,6 @@ module.exports = ->
     borg.eachServer ({ server }) ->
       if null isnt server.fqdn.match(rx) and
         (not require_test_match or server.fqdn.match /^test-/)
-          if test_prefix
-            server.fqdn = "test-#{server.fqdn}"
           servers.push server
     if servers.length
       console.log "These existing network server definitions will be #{action or 'used'}:\n"
@@ -29,7 +27,7 @@ module.exports = ->
       process.stderr.write "\n0 existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
     else
       console.log "Assuming this is a new network server definition."
-      cb [ fqdn: "test-"+process.argv[4] ]
+      cb [ fqdn: process.argv[4] ]
 
   switch process.argv[3]
     when 'list'
@@ -70,7 +68,7 @@ module.exports = ->
           process.exit 0
 
     when 'assemble'
-      # TODO: finish
+      # TODO: create + assimilate + checkup
       console.log 'Not implemented, yet.'
 
     when 'checkup'
