@@ -12,17 +12,18 @@ module.exports = ->
   rx = new RegExp process.argv[4], 'g'
   borg.flattenNetworkAttributes()
 
-  confirmSelection = ({ hide_ips, test_prefix, action }, cb) =>
+  confirmSelection = ({ hide_ips, test_prefix, require_test_match, action }, cb) =>
     servers = []
     borg.eachServer ({ server }) ->
-      if null isnt server.fqdn.match rx
-        if test_prefix
-          server.fqdn = "test-#{server.fqdn}"
-        servers.push server
+      if null isnt server.fqdn.match(rx) and
+        (not require_test_match or server.fqdn.match /^test-/)
+          if test_prefix
+            server.fqdn = "test-#{server.fqdn}"
+          servers.push server
     if servers.length
       console.log "These existing network server definitions will be #{action or 'used'}:\n"
       for server in servers
-        console.log "  #{if hide_ips then '' else server.private_ip or server.public_ip or '#'} #{server.fqdn}"
+        console.log "  #{if hide_ips then '' else server.public_ip or server.private_ip or '#'} #{server.fqdn}"
       borg.cliConfirm "Proceed?", -> cb servers
     else
       console.log "Assuming this is a new network server definition."
@@ -35,44 +36,54 @@ module.exports = ->
       borg.eachServer ({ server }) ->
         if null isnt server.fqdn.match(rx) and null isnt server.fqdn.match /^test-/
           count++
-          console.log "#{((server.private_ip or server.public_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
+          console.log "#{((server.public_ip or server.private_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
       process.stderr.write "\n#{count} existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
 
     when 'create'
-      confirmSelection hide_ips: true, test_prefix: true, action: '', (servers) => for server in servers
+      confirmSelection action: 'duplicated with test- prefix', (servers) => for server in servers
+        flow = new async
+        for server in servers
+          if null isnt server.fqdn.match /^test-/
+            console.log "NOTICE: Won't make two of the same test server. Reuse or destroy the existing instance."
+            continue
+          ((server) ->
+            # TODO introduce parallel option, with intercepted + colorized log output
+            flow.serial (next) ->
+              borg.create fqdn: 'test-'+server.fqdn, next
+          )(server)
+        flow.go ->
+          process.exit 0
+
+    when 'assimilate'
+      # TODO: handle exception: can't test assimilate instances that we don't have memory of
+      confirmSelection require_test_match: true, action: 're-assimilated', (servers) => for server in servers
         flow = new async
         for server in servers
           ((server) ->
             # TODO introduce parallel option, with intercepted + colorized log output
             flow.serial (next) ->
-              borg.create fqdn: server.fqdn, next
+              borg.assimilate fqdn: server.fqdn, next
           )(server)
         flow.go ->
+          process.exit 0
 
-    when 'assimilate'
-      attrs = get_instance_attrs process.argv[4]
-      Borg = require './Borg'
-      target = "#{boxes[attrs.box].user}:#{boxes[attrs.box].pass}@localhost:22"
-      options = role: attrs._name
-      console.log JSON.stringify target: target, options: options
-      #Borg.assimilate target, options, ->
-      #  console.log 'done'
+    when 'assemble'
+      # TODO: finish
+      console.log 'Not implemented, yet.'
 
-    when 'use'
+    when 'checkup'
       # TODO: run mocha-based test suite
       return
 
     when 'login'
+      # TODO: spawn new terminal with ssh, or cssh if multiple hosts matched
       #child_process.spawn 'ssh', [], env: process.env, stdio: 'passthru'
       return
 
     when 'destroy'
-      attrs = get_instance_attrs process.argv[4]
-      # TODO: shutdown first, but only if running
-      vboxmanage ['controlvm', attrs._name, 'poweroff'], ->
-        vboxmanage ['unregistervm', attrs._name, '--delete'], ->
-          # TODO: delete natnetwork
-          #vboxmanage [ 'natnetwork', 'remove', '-t', datacenter ]
+      # TODO: lookup server.aws_instance_id and use cloud/aws:destroyInstance()
+      # TODO: delete from memory.json
+      return
 
   return
 

@@ -174,7 +174,7 @@ class Borg
         process.stdin.removeListener 'readable', confirm_cb
         process.stdout.pause()
         return fail_cb() if chunk.toLowerCase() isnt "y\n"
-        cb servers
+        cb()
     process.stdin.resume()
 
   # scripts
@@ -231,7 +231,7 @@ class Borg
         if server.group isnt last_group
           console.log "\n# #{server.datacenter} #{server.group}"
           last_group = server.group
-        console.log "#{((server.private_ip or server.public_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
+        console.log "#{((server.public_ip or server.private_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
     process.stderr.write "\n#{count} network server definition(s) found.\n\n"
 
   create: (locals, cb) ->
