@@ -1,14 +1,17 @@
-path = require 'path'
-_ = require 'lodash'
 require 'sugar'
+_     = require 'lodash'
+path  = require 'path'
 async = require 'async2'
 delay = (s, f) -> setTimeout f, s
-{networks, datacenters, clients, each_machine_instance, get_instance_attrs} = require './Network'
+Borg = require '../Borg'
+borg = new Borg
+
+#{networks, datacenters, clients, each_machine_instance, get_instance_attrs} = require './Network'
 
 module.exports = ->
   vbox_conf = require path.join process.cwd(), 'attributes', 'virtualbox'
   { boxes } = vbox_conf
-  VBoxProxyClient = require './VBoxProxyClient'
+  VBoxProxyClient = require '../cloud/VBoxProxyClient'
   client = new VBoxProxyClient()
   vboxmanage = (args, cb) ->
     console.log JSON.stringify args
