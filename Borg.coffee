@@ -67,6 +67,14 @@ class Borg
     _server = {}
     found = false
     possible_group = undefined
+
+    # inject memorized servers and their attributes into network hierarchy
+    memory = @remember '/'
+    for fqdn, vvvv of memory when (_locals = @parseFQDN fqdn: fqdn)
+      _.merge _locals, vvvv
+      @defineNetworkServer _locals
+
+    # traverse and expand network hierarchy
     @eachServer ({ datacenter, group, type, instance, env, tld, subproject, server }) =>
       _.merge server,
         @networks.global,
@@ -80,21 +88,16 @@ class Borg
       server.group ||= group
       server.type ||= type
       server.instance ||= instance
-      server.environment = switch server.env
+      server.environment ||= switch server.env
         when 'dev' then 'development'
         when 'stage' then 'staging'
         when 'prod' then 'production'
         else server.env
-      server.fqdn = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
-      server.hostname = "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
+      server.fqdn ||= "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
+      server.hostname ||= "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
       for own dev, adapter of server.network when adapter.private and adapter.address
-        server.private_ip = adapter.address
+        server.private_ip ||= adapter.address
         break
-
-      # apply details remembered
-      # TODO: merge all instances listed from memory.json into @network,
-      #         e.g., so undefined servers can be iterated with @eachServer()
-      _.merge server, @remember server.fqdn
 
       # expand function values
       for key, value of server when typeof value is 'function'
@@ -110,8 +113,22 @@ class Borg
           if locals.type is type and
             locals.instance is instance
               found = true
+              _.merge server, locals # local attributes override everything else for server
               _server = server
     return found: found, server: _server, possible_group: possible_group
+
+  parseFQDN: (locals) ->
+    if null isnt matches = locals.fqdn.match /^(test-)?([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(-([a-z]+))?(\.(\w+\.[a-z]{2,3}))$/i
+      [nil, nil, locals.datacenter, locals.env, locals.type, locals.instance, nil, locals.subproject, nil, locals.tld] = matches
+      return locals
+    return false
+
+  defineNetworkServer: (locals) ->
+    @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type] ||= {}
+    @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type].instances ||= {}
+    server = @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type].instances[locals.instance] ||= {}
+    _.merge server, locals # local attributes override everything else for server
+    return server
 
   # compile all attributes into a single @server object hierarchy
   getServerObject: (locals) ->
@@ -123,9 +140,7 @@ class Borg
 
     # parse fqdn into name parts
     if locals.fqdn
-      if null isnt matches = locals.fqdn.match /^([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(-([a-z]+))?(\.(\w+\.[a-z]{2,3}))$/i
-        [nil, locals.datacenter, locals.env, locals.type, locals.instance, nil, locals.subproject, nil, locals.tld] = matches
-      else
+      unless @parseFQDN locals
         @die "unrecognized fqdn format: #{locals.fqdn}. should be {datacenter}-{env}-{type}{instance}-{subproject}{tld}"
     else unless locals.datacenter and locals.env and locals.type and locals.instance and locals.tld
       @die 'missing required locals.fqdn or all of locals: datacenter, env, type, instance, tld. cannot continue.'
@@ -134,20 +149,33 @@ class Borg
     { found,  server, possible_group } = @flattenNetworkAttributes locals
     unless found
       @die "Unable to locate server within network attributes." unless possible_group # TODO: could define an automatic group name, but meh.
-      console.log "WARNING! Server was not defined in network attributes. Assuming you meant to add it under '#{possible_group}' group."
-      @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type] ||= {}
-      @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances ||= {}
-      @networks.datacenters[locals.datacenter].groups[possible_group].servers[locals.type].instances[locals.instance] = {} # destructive, but shouldn't exist here
+      console.log "WARNING! Server was not defined in network attributes. Will add it under '#{possible_group}' group."
+      #@cliConfirm "Proceed?", =>
+      locals.group = possible_group
+      @defineNetworkServer locals
       { server } = @flattenNetworkAttributes locals # again, now that our server is defined
 
     #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
-
-    # local attributes override everything else for current server
-    _.merge server, locals
-
     console.log "Server attributes before scripts:\n"+ JSON.stringify server, null, 2
 
     return server
+
+  cliConfirm: (question, cb) ->
+    fail_cb = ->
+      console.log "Aborted.\n"
+      process.exit 1
+    process.stdout.write "\n#{question} [y/N] "
+    unless USING_CLI
+      process.stderr.write "Error: tty stdin required to answer, but not using cli.\n"
+      return fail_cb()
+    process.stdin.on 'readable', confirm_cb = ->
+      chunk = process.stdin.read()
+      if chunk isnt null
+        process.stdin.removeListener 'readable', confirm_cb
+        process.stdout.pause()
+        return fail_cb() if chunk.toLowerCase() isnt "y\n"
+        cb servers
+    process.stdin.resume()
 
   # scripts
   import: (paths...) ->
@@ -165,6 +193,7 @@ class Borg
     finally
       (require p).apply @
 
+  # save instance details to disk for future reference
   remember: (xpath, value=undefined) ->
     # load
     memory_file = path.join process.cwd(), 'attributes', 'memory.json'
@@ -172,6 +201,7 @@ class Borg
     memory = require memory_file
     # evaluate path
     pointer = memory
+    return pointer if xpath is '/' and value is undefined
     parts = xpath.split '/'
     for i in [0...parts.length]
       key = parts[i]
@@ -190,25 +220,40 @@ class Borg
 
 
   ## api / cli
+  list: (locals, cb) ->
+    rx = new RegExp process.argv[4], 'g'
+    @flattenNetworkAttributes()
+    last_group = undefined
+    count = 0
+    @eachServer ({ server }) ->
+      if null isnt server.fqdn.match(rx) and null is server.fqdn.match /^test-/
+        count++
+        if server.group isnt last_group
+          console.log "\n# #{server.datacenter} #{server.group}"
+          last_group = server.group
+        console.log "#{((server.private_ip or server.public_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
+    process.stderr.write "\n#{count} network server definition(s) found.\n\n"
+
   create: (locals, cb) ->
     @server = @getServerObject locals
 
     provision = =>
-      console.log 'beginning provision'
+      console.log "asking #{@server.provider} to create..."
       switch @server.provider
         when 'aws'
           Aws = (require './cloud/aws')(console.log)
           Aws.createInstance @server.fqdn, @server, ((id) ->
-            console.log "procuring instance_id #{id}..."
-          ), (instance) -> delay 60*1000*1, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
+            console.log "got instance_id #{id}..."
+          ), (instance) => delay 60*1000*1, => # needs time to initialize or ssh connect and cmds will hang indefinitely
+            @remember "/#{locals.fqdn}/aws_instance_id", instance.instanceId
             locals.public_ip = instance.publicIpAddress
             locals.private_ip = instance.privateIpAddress
             next()
 
     next = =>
-      # save a few instance details to disk for future reference
       @remember "/#{locals.fqdn}/private_ip", locals.private_ip
       @remember "/#{locals.fqdn}/public_ip", locals.public_ip
+      @remember "/#{locals.fqdn}/group", locals.group
 
       # build remaining locals to match would-be calculated values
       # TODO: possibly call createServerObject() again here
@@ -218,9 +263,10 @@ class Borg
       locals.ssh ||= {}
       locals.ssh.host = locals.public_ip or locals.private_ip
 
-      # assimilate the new machine
-      console.log "assimilating #{locals.ssh.host}..."
-      @assimilate locals, cb
+      console.log "Created new host:\n#{locals.ssh.host} #{locals.fqdn}\n"
+
+      # optionally chain to assimilate
+      cb locals
 
     provision()
 
@@ -271,7 +317,7 @@ class Borg
 
 
   assemble: (locals, cb) ->
-    @provision locals, =>
+    @provision locals, (locals) =>
       @assimilate locals, cb
 
 

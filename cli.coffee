@@ -1,3 +1,5 @@
+global.USING_CLI = true
+
 BORG_HELP = """
 Usage: borg <command> [options] <host ...>
 
@@ -6,9 +8,10 @@ testing, and deployment.
 
 Commands:
 
+  list        enumerate available hosts
   create      construct hosts in the cloud via provider apis
   assimilate  execute scripted commands via ssh on hosts
-  assemble    create and assimilate hosts
+  assemble    alias for create + assimilate
   test        simulate assimilation on localhost
   version     display currently installed version
   help        display more information about a command
@@ -17,7 +20,7 @@ Commands:
 
 
 BORG_HELP_TEST = """
-Usage: borg test <subcommand> <fqdn_regex>
+Usage: borg test <subcommand> <fqdn|regex>
 
 Performs scripted operations, including integration tests,
 across network-defined FQDNs matching the provided regular
@@ -25,13 +28,13 @@ expression; aiding in development and integrity validation.
 
 Subcommands:
 
-  list        enumerate matching hosts
-  create      construct hosts in the cloud via provider apis
-  assimilate  execute scripted commands via ssh on hosts
-  assemble    create and assimilate hosts
-  checkup     test successful assimilation
+  list        enumerate available test hosts
+  create      construct new test hosts
+  assimilate  execute scripts on existing test hosts
+  assemble    alias for create + assimilate
+  destroy     delete existing test hosts
+  checkup     execute test suite against existing hosts
   login       open ssh sessions to matching hosts
-  destroy     delete localhost vm
 
 FQDN RegEx:
 
@@ -60,7 +63,7 @@ switch cmd = process.argv[2]
     pkg = require './package.json'
     console.log "borg v#{pkg.version}\n"
 
-  when 'create', 'assimilate', 'assemble'
+  when 'list', 'create', 'assimilate', 'assemble'
     Borg = require './Borg'
     borg = new Borg
     borg[cmd] fqdn: process.argv[3], (err) ->

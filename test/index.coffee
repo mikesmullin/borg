@@ -1,3 +1,4 @@
+process.stdin.setEncoding 'utf8'
 require 'sugar'
 _     = require 'lodash'
 path  = require 'path'
@@ -8,59 +9,45 @@ borg = new Borg
 
 module.exports = ->
   cloud_provider = 'aws' # hard-coded for now
+  rx = new RegExp process.argv[4], 'g'
+  borg.flattenNetworkAttributes()
+
+  confirmSelection = ({ hide_ips, test_prefix, action }, cb) =>
+    servers = []
+    borg.eachServer ({ server }) ->
+      if null isnt server.fqdn.match rx
+        if test_prefix
+          server.fqdn = "test-#{server.fqdn}"
+        servers.push server
+    if servers.length
+      console.log "These existing network server definitions will be #{action or 'used'}:\n"
+      for server in servers
+        console.log "  #{if hide_ips then '' else server.private_ip or server.public_ip or '#'} #{server.fqdn}"
+      borg.cliConfirm "Proceed?", -> cb servers
+    else
+      console.log "Assuming this is a new network server definition."
+      cb [ fqdn: "test-"+process.argv[4] ]
 
   switch process.argv[3]
     when 'list'
-      borg.flattenNetworkAttributes()
-      last_group = undefined
       count = 0
+      process.stdout.write "\n"
       borg.eachServer ({ server }) ->
-        if null isnt server.fqdn.match new RegExp process.argv[4], 'g'
+        if null isnt server.fqdn.match(rx) and null isnt server.fqdn.match /^test-/
           count++
-          if server.group isnt last_group
-            console.log "\n# #{server.datacenter} #{server.group}"
-            last_group = server.group
-          console.log "#{server.private_ip or server.public_ip or '#'} #{server.fqdn}"
-      console.log "\n#{count} server(s) found.\n"
+          console.log "#{((server.private_ip or server.public_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
+      process.stderr.write "\n#{count} existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
 
     when 'create'
-      attrs = get_instance_attrs process.argv[4]
-      console.log 'found machine', JSON.stringify attrs, null, 2
-
-      flow = new async
-
-      # TODO: move the ostype value inside of .box .metadata file
-      flow.serial (next) ->
-        vboxmanage ['import', boxes[attrs.box].path, '--vsys', 0, '--ostype', 'Ubuntu_64', '--vmname',
-        attrs._name, '--cpus', attrs.cpus, '--memory', attrs.memory, '--unit', 4, '--ignore'], next
-
-      # create natnetwork
-      _.each networks[attrs.datacenter].nat_networks, (nat_network, name) ->
-        nat_network._name = "#{attrs.datacenter}_#{name}".underscore()
-        flow.serial (next) ->
-          vboxmanage [ 'natnetwork', 'add', '-t', nat_network._name, '-n', nat_network.cidr, '-e', '-h', (nat_network.dhcp or 'on') ], next
-        # configure natnetwork ssh port forward
-        if nat_network.ssh_port_forward is true and attrs._random_ssh_port and attrs._ssh_nic_ip and attrs._ssh_nic_port
-          flow.serial (next) ->
-            vboxmanage [ 'natnetwork', 'modify', '-t', nat_network._name, '-p', "ssh:tcp:[#{vbox_conf.host}]:#{attrs._random_ssh_port}:[#{attrs._ssh_nic_ip}]:#{attrs._ssh_nic_port}" ], next
-
-      # configure interface(s)
-      _.each [0, 1, 2, 3], (i) ->
-        if attrs.network["eth#{i}"]?.attach?
-          switch attrs.network["eth#{i}"].attach
-            when 'disconnected'
-              flow.serial (next) ->
-                vboxmanage [ 'modifyvm', attrs._name, "--nic#{i+1}", 'null', "--cableconnected#{i+1}", 'off' ], next
-            when 'natnetwork'
-              flow.serial (next) ->
-                vboxmanage [ 'modifyvm', attrs._name, "--nic#{i+1}", 'natnetwork', "--nat-network#{i+1}", "#{attrs.datacenter}_#{attrs.network["eth#{i}"].natnetwork}".underscore(), "--cableconnected#{i+1}", 'on' ], next
-
-      # start the machine backgrounded
-      flow.serial (next) ->
-        vboxmanage ['startvm', attrs._name], next #, '--type', 'headless'], next
-
-      flow.go ->
-        # TODO: kick-start assimilate
+      confirmSelection hide_ips: true, test_prefix: true, action: '', (servers) => for server in servers
+        flow = new async
+        for server in servers
+          ((server) ->
+            # TODO introduce parallel option, with intercepted + colorized log output
+            flow.serial (next) ->
+              borg.create fqdn: server.fqdn, next
+          )(server)
+        flow.go ->
 
     when 'assimilate'
       attrs = get_instance_attrs process.argv[4]
@@ -160,9 +147,8 @@ module.exports = ->
 #
 #      flow = new async
 #
-#      # TODO: move the ostype value inside of .box .metadata file
 #      flow.serial (next) ->
-#        vboxmanage ['import', boxes[attrs.box].path, '--vsys', 0, '--ostype', 'Ubuntu_64', '--vmname',
+#        vboxmanage ['import', boxes[attrs.box].path, '--vsys', 0, '--ostype', boxes[attrs.box].ostype, '--vmname',
 #        attrs._name, '--cpus', attrs.cpus, '--memory', attrs.memory, '--unit', 4, '--ignore'], next
 #
 #      # create natnetwork
