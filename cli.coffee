@@ -7,11 +7,8 @@ Commands:
   assimilate  execute scripted commands via ssh on hosts
   assemble    create and assimilate hosts
   test        simulate assimilation on localhost
-
-Options:
-
-  -h, --help     output usage information
-  -V, --version  output version number
+  version     display currently installed version
+  help        display more information about a command
 
 """
 

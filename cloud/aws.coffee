@@ -1,5 +1,5 @@
 exec = require('child_process').exec
-delay = (s,f) -> setTimeout f, s
+{ delay } = require '../util'
 
 # interfaces with aws cli;
 # which is a dependency that must be pre-installed,

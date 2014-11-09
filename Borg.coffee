@@ -4,7 +4,7 @@ _ = require 'lodash'
 require 'sugar'
 Logger = require './Logger'
 global.DEBUG = true
-delay = (s,f) -> setTimeout f, s
+{ delay } = require './util'
 
 module.exports =
 class Borg
