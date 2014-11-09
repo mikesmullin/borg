@@ -292,18 +292,16 @@ class Borg
       #locals.scripts ||= [ 'servers/'+locals.ssh.host ]
       locals.scripts ||= []
 
-      # find matching role(s)
-      roles = fs.readdirSync path.join @cwd, 'scripts', 'roles'
-      for role in roles
-        rx = role.replace(/\.coffee$/, '').replace(/\./g, '\\.').replace(/_/g, '.+')
-        unless null is locals.fqdn.match rx
-          locals.scripts.push path.join 'roles', role
-          break # for now, only take the first match
+      # include scripts attributes for matches in scripts/servers/*.coffee
+      scripts = fs.readdirSync path.join @cwd, 'scripts', 'servers'
+      for script in scripts when script isnt 'blank.coffee' and null isnt script.match /\.coffee$/
+        if true is (require path.join @cwd, 'scripts', 'servers', script).target.apply @
+          locals.scripts.push path.join 'scripts', 'servers', script
       unless locals.scripts.length
-        local.scripts.push path.join 'roles', 'blank'
+        local.scripts.push path.join 'scripts', 'servers', 'blank'
 
       for script in locals.scripts
-        @import @cwd, 'scripts', script
+        (require path.join @cwd, script).assimilate.apply @
 
       console.log "Server attributes after scripts:\n"+ JSON.stringify @server, null, 2
 
