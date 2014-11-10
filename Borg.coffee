@@ -132,6 +132,12 @@ class Borg
 
   # compile all attributes into a single @server object hierarchy
   getServerObject: (locals, cb) ->
+    # allow users to pass CSON via --locals cli argument
+    if process.options.locals
+      CoffeeScript = require 'coffee-script'
+      data = eval CoffeeScript.compile process.options.locals, bare: true
+      _.merge locals, data
+
     # helpful for debugging
     scrubbed_locals = _.cloneDeep locals
     scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
