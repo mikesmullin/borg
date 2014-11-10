@@ -4,8 +4,6 @@ _     = require 'lodash'
 path  = require 'path'
 async = require 'async2'
 { delay } = require '../util'
-Borg = require '../Borg'
-borg = new Borg
 
 module.exports = ->
   cloud_provider = 'aws' # hard-coded for now

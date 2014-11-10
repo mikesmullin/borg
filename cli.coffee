@@ -59,58 +59,51 @@ Options:
 BORG_HELP_NONE = "Sorry, no help for that, yet."
 INVALID = "Invalid command.\n\n"
 
-OPTION_STRING = /^--?(\w+)\s*=?\s*(["'])((?:\\\2|.)*?)\2/i
-OPTION_WORD = /^(\w+)/i
+OPTION = /^--?(\w+)\s*=?\s*(.*)$/
+argv = []; options = {}; args = process.argv.slice 2
+while args.length
+  arg = args.shift()
+  if null isnt matches = arg.match OPTION
+    [nil, key, value] = matches
+    if key and value
+      options[key] = value
+    else if key
+      options[key] = args.shift()
+  else
+    argv.push arg
+process.args = argv
+process.options = options
 
-argv = []; options = []
-console.log argv: process.argv
-args = process.argv.slice(2).join ' '
-while args.length > 0
-  console.log args: args
-  if null isnt matches = args.match OPTION_STRING # string option
-    [nil, key, nil, value] = matches
-    options[key] = value
-    args = args.substr matches[0].length+1
-    console.log key: key, value: value
-  else if -1 is x = args.indexOf ' ' # end of line
-    argv.push args
-    args = ''
-  else # word
-    argv.push args.substr 0, x
-    args = args.substr x+1
-console.log argv: argv, options: options
-process.exit 1
+Borg = require './Borg'
+borg = new Borg
 
-
-switch cmd = process.argv[2]
+switch cmd = argv[0]
   when '-V', '--version', 'version'
     pkg = require './package.json'
     console.log "borg v#{pkg.version}\n"
 
   when 'list', 'create', 'assimilate', 'assemble', 'destroy'
-    Borg = require './Borg'
-    borg = new Borg
-    borg[cmd] fqdn: process.argv[3], (err) ->
+    borg[cmd] fqdn: argv[1], (err) ->
       if err
         process.stderr.write 'Error: '+err+"\n"
         process.exit 1
 
   when 'test'
-    return console.log BORG_HELP_TEST if process.argv.length <= 3
-    (require './test')(borg)
+    return console.log BORG_HELP_TEST if argv.length <= 1
+    require './test'
 
   when '-h', '--help', 'help'
-    if process.argv.length is 3
+    if argv.length is 1
       console.log BORG_HELP
     else
-      switch process.argv[3]
+      switch argv[1]
         when 'assimilate'
           console.log BORG_HELP_ASSIMILATE
         when 'test'
-          if process.argv.length is 4
+          if argv.length is 2
             console.log BORG_HELP_TEST
           else
-            switch process.argv[4]
+            switch argv[2]
               when 'list', 'create', 'assimilate', 'checkup', 'login', 'destroy'
                 console.log BORG_HELP_NONE
               else
