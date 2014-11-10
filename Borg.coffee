@@ -334,7 +334,7 @@ class Borg
         console.log "Destroyed #{locals.fqdn}."
         cb()
 
-      console.log "asking #{@server.fqdn} to terminate..."
+      console.log "asking #{@server.fqdn} (#{@server.public_ip or @server.private_ip or ''}) to terminate..."
       if USING_CLI
         @cliConfirm "Proceed?", terminate
       else
