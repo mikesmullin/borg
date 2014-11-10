@@ -266,9 +266,7 @@ class Borg
         locals.ssh.host = locals.public_ip or locals.private_ip
 
         console.log "Created new host:\n#{locals.ssh.host} #{locals.fqdn}\n"
-
-        # optionally chain to assimilate
-        cb locals
+        cb()
 
       provision()
 
@@ -319,7 +317,7 @@ class Borg
 
 
   assemble: (locals, cb) ->
-    @provision locals, (locals) =>
+    @create locals, =>
       @assimilate locals, cb
 
 
