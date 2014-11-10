@@ -59,6 +59,29 @@ Options:
 BORG_HELP_NONE = "Sorry, no help for that, yet."
 INVALID = "Invalid command.\n\n"
 
+OPTION_STRING = /^--?(\w+)\s*=?\s*(["'])((?:\\\2|.)*?)\2/i
+OPTION_WORD = /^(\w+)/i
+
+argv = []; options = []
+console.log argv: process.argv
+args = process.argv.slice(2).join ' '
+while args.length > 0
+  console.log args: args
+  if null isnt matches = args.match OPTION_STRING # string option
+    [nil, key, nil, value] = matches
+    options[key] = value
+    args = args.substr matches[0].length+1
+    console.log key: key, value: value
+  else if -1 is x = args.indexOf ' ' # end of line
+    argv.push args
+    args = ''
+  else # word
+    argv.push args.substr 0, x
+    args = args.substr x+1
+console.log argv: argv, options: options
+process.exit 1
+
+
 switch cmd = process.argv[2]
   when '-V', '--version', 'version'
     pkg = require './package.json'
