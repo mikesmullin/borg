@@ -18,6 +18,6 @@ else
   #         this makes debugging easier.
   TMP=.cli.coffee
   test -f $TMP || echo "require 'borg/cli'" > $TMP
-  coffee $TMP $*
+  coffee $TMP "$@"
   rm $TMP
 fi
