@@ -283,9 +283,12 @@ class Borg
 
     # load server attributes for named host
     @getServerObject locals, (@server) =>
-      locals.ssh.host ||= @server.public_ip or @server.private_ip
+      @server.ssh.host ||= @server.public_ip or @server.private_ip
+      readKey = (file) -> ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{file}"
       if @server.provider is 'aws'
-        locals.ssh.key ||= ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{@server.aws_key}"
+        @server.ssh.key ||= readKey @server.aws_key
+      else if @server.ssh.key_file
+        @server.ssh.key ||= readKey @server.ssh.key_file
 
       console.log "Server attributes before scripts:\n"+ JSON.stringify server, null, 2
 
@@ -293,32 +296,32 @@ class Borg
       @import @cwd, 'scripts', 'vendor', 'resources'
 
       # begin chaining script execution callbacks
-      #locals.scripts ||= [ 'servers/'+locals.ssh.host ]
-      locals.scripts ||= []
+      #@server.scripts ||= [ 'servers/'+@server.ssh.host ]
+      @server.scripts ||= []
 
       # include scripts attributes for matches in scripts/servers/*.coffee
       scripts = fs.readdirSync path.join @cwd, 'scripts', 'servers'
       for script in scripts when script isnt 'blank.coffee' and null isnt script.match /\.coffee$/
         if true is (require path.join @cwd, 'scripts', 'servers', script).target.apply @
-          locals.scripts.push path.join 'scripts', 'servers', script
-      unless locals.scripts.length
+          @server.scripts.push path.join 'scripts', 'servers', script
+      unless @server.scripts.length
         local.scripts.push path.join 'scripts', 'servers', 'blank'
 
-      for script in locals.scripts
+      for script in @server.scripts
         (require path.join @cwd, script).assimilate.apply @
 
       console.log "Server attributes after scripts:\n"+ JSON.stringify @server, null, 2
 
       # connect via ssh
       Ssh = require './Ssh'
-      @ssh = new Ssh locals.ssh, (err) =>
+      @ssh = new Ssh @server.ssh, (err) =>
         return cb err if err
         # finish and execute chain
         @finally (err) =>
           return cb err if err
           @ssh.close()
-          delay 100, ->
-            console.log "Assimilated #{locals.fqdn or locals.ssh.host}."
+          delay 100, =>
+            console.log "Assimilated #{@server.fqdn or @server.ssh.host}."
             cb null
 
 
