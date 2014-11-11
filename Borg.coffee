@@ -118,7 +118,7 @@ class Borg
     return found: found, server: _server, possible_group: possible_group
 
   parseFQDN: (locals) ->
-    if null isnt matches = locals.fqdn.match /^(test-)?([a-z]{2,3}-[a-z]{2})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(?:-([a-z]+))?(?:\.(\w+\.[a-z]{2,3}))$/i
+    if null isnt matches = locals.fqdn.match /^(test-)?([a-z]{2,3}-[a-z]{2,3})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(?:-([a-z]+))?(?:\.(\w+\.[a-z]{2,3}))$/i
       [nil, nil, locals.datacenter, locals.env, locals.type, locals.instance, locals.subproject, locals.tld] = matches
       return locals
     return false
