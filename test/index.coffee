@@ -5,12 +5,13 @@ path  = require 'path'
 async = require 'async2'
 { delay } = require '../util'
 
-module.exports = ->
+module.exports = (borg) ->
   cloud_provider = 'aws' # hard-coded for now
-  rx = new RegExp process.argv[4], 'g'
+  rx = new RegExp process.args[2], 'g'
   borg.flattenNetworkAttributes()
 
   confirmSelection = ({ hide_ips, test_prefix, require_test_match, action }, cb) =>
+    borg.die "host_or_regex required." unless process.args[2]
     servers = []
     borg.eachServer ({ server }) ->
       if null isnt server.fqdn.match(rx) and
@@ -25,9 +26,9 @@ module.exports = ->
       process.stderr.write "\n0 existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
     else
       console.log "Assuming this is a new network server definition."
-      cb [ fqdn: process.argv[4] ]
+      cb [ fqdn: process.args[2] ]
 
-  switch process.argv[3]
+  switch process.args[1]
     when 'list'
       count = 0
       process.stdout.write "\n"

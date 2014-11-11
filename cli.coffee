@@ -77,33 +77,33 @@ process.options = options
 Borg = require './Borg'
 borg = new Borg
 
-switch cmd = argv[0]
+switch cmd = process.args[0]
   when '-V', '--version', 'version'
     pkg = require './package.json'
     console.log "borg v#{pkg.version}\n"
 
   when 'list', 'create', 'assimilate', 'assemble', 'destroy'
-    borg[cmd] fqdn: argv[1], (err) ->
+    borg[cmd] fqdn: process.args[1], (err) ->
       if err
         process.stderr.write 'Error: '+err+"\n"
         process.exit 1
 
   when 'test'
-    return console.log BORG_HELP_TEST if argv.length <= 1
-    require './test'
+    return console.log BORG_HELP_TEST if process.args.length <= 1
+    (require './test')(borg)
 
   when '-h', '--help', 'help'
-    if argv.length is 1
+    if process.args.length is 1
       console.log BORG_HELP
     else
-      switch argv[1]
+      switch process.args[1]
         when 'assimilate'
           console.log BORG_HELP_ASSIMILATE
         when 'test'
-          if argv.length is 2
+          if process.args.length is 2
             console.log BORG_HELP_TEST
           else
-            switch argv[2]
+            switch process.args[2]
               when 'list', 'create', 'assimilate', 'checkup', 'login', 'destroy'
                 console.log BORG_HELP_NONE
               else
