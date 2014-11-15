@@ -308,7 +308,7 @@ class Borg
         if true is (require path.join @cwd, 'scripts', 'servers', script).target.apply @
           @server.scripts.push path.join 'scripts', 'servers', script
       unless @server.scripts.length
-        local.scripts.push path.join 'scripts', 'servers', 'blank'
+        @server.scripts.push path.join 'scripts', 'servers', 'blank'
 
       for script in @server.scripts
         (require path.join @cwd, script).assimilate.apply @
