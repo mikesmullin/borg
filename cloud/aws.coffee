@@ -9,7 +9,8 @@ exec = require('child_process').exec
 module.exports = (log) -> Aws =
   jsonCli: (cmd, cb) ->
     child = undefined
-    log JSON.stringify cmd: cmd if DEBUG
+    cmd = cmd.replace /[\r\n\s]+/g, ' '
+    log "AWS CLI Command:\n"+cmd+"\n" if DEBUG
     child = exec cmd, cwd: process.cwd(), env: process.env, (err, stdout, stderr) ->
       if err isnt null
         log child.pid+'#error: '+ err
@@ -26,23 +27,23 @@ module.exports = (log) -> Aws =
     log "creating one #{name} instance..."
     res = {}
     Aws.jsonCli """
-    aws ec2 run-instances \
-      --region #{locals.aws_region} \
-      --image-id #{locals.aws_image} \
-      --count 1 \
-      --instance-type #{locals.aws_size} \
-      --key-name #{locals.aws_key} \
-      #{if locals.aws_security_groups then "--security-groups #{locals.aws_security_groups.join ','}" else ''} \
-      #{if locals.aws_security_group_ids then "--security-group-ids #{locals.aws_security_group_ids.join ','}" else ''} \
-      #{if locals.aws_subnet then "--subnet-id #{locals.aws_subnet}" else ''} \
-      #{if locals.aws_associate_public_ip then "--associate-public-ip-address" else ''} \
-      --placement Tenancy=default \
-      --block-device-mappings='[ \
-        {"DeviceName":"/dev/xvdb","VirtualName":"ephemeral0"}, \
-        {"DeviceName":"/dev/xvdc","VirtualName":"ephemeral1"}, \
-        {"DeviceName":"/dev/xvdd","VirtualName":"ephemeral2"}, \
-        {"DeviceName":"/dev/xvde","VirtualName":"ephemeral3"} \
-      ]' \
+    aws ec2 run-instances
+      --region #{locals.aws_region}
+      --image-id #{locals.aws_image}
+      --count 1
+      --instance-type #{locals.aws_size}
+      --key-name #{locals.aws_key}
+      #{if locals.aws_security_groups then "--security-groups #{locals.aws_security_groups.join ','}" else ''}
+      #{if locals.aws_security_group_ids then "--security-group-ids #{locals.aws_security_group_ids.join ','}" else ''}
+      #{if locals.aws_subnet then "--subnet-id #{locals.aws_subnet}" else ''}
+      #{if locals.aws_associate_public_ip then "--associate-public-ip-address" else ''}
+      --placement Tenancy=default
+      --block-device-mappings='[
+        {"DeviceName":"/dev/xvdb","VirtualName":"ephemeral0"},
+        {"DeviceName":"/dev/xvdc","VirtualName":"ephemeral1"},
+        {"DeviceName":"/dev/xvdd","VirtualName":"ephemeral2"},
+        {"DeviceName":"/dev/xvde","VirtualName":"ephemeral3"}
+      ]'
       ;
     """, (err, data) ->
       instance_cb res.instanceId = data.Instances[0].InstanceId
