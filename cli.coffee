@@ -90,7 +90,11 @@ switch cmd = process.args[0]
 
   when 'test'
     return console.log BORG_HELP_TEST if process.args.length <= 1
-    (require './test')(borg)
+    switch process.args[1]
+      when 'list', 'create', 'assimilate', 'assemble', 'checkup', 'login', 'destroy'
+        (require './test')(borg)
+      else
+        console.log INVALID+BORG_HELP_TEST
 
   when '-h', '--help', 'help'
     if process.args.length is 1
