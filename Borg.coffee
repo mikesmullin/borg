@@ -243,6 +243,7 @@ class Borg
 
   create: (locals, cb) ->
     @getServerObject locals, (@server) =>
+      @remember "/#{locals.fqdn}/group", locals.group
       #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
 
       provision = =>
@@ -264,7 +265,6 @@ class Borg
       next = =>
         @remember "/#{locals.fqdn}/private_ip", locals.private_ip
         @remember "/#{locals.fqdn}/public_ip", locals.public_ip
-        @remember "/#{locals.fqdn}/group", locals.group
 
         # build remaining locals to match would-be calculated values
         # TODO: possibly call createServerObject() again here
