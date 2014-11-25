@@ -47,6 +47,11 @@ class Borg
   define: (o) => @server = _.merge @server, o
   default: (o) => @server = _.merge o, @server
 
+  server_name: ({ datacenter, env, type, instance, subproject, tld }) =>
+    instance ||= '01'
+    subproject ||= @server.subproject ||= ''
+    "#{datacenter or @server.datacenter}-#{env or @server.env}-#{type}#{instance}#{subproject && '-'+subproject}.#{tld or @server.tld}"
+
   eachServer: (each_cb) ->
     for datacenter, v of @networks.datacenters
       for group, vv of v.groups
