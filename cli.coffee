@@ -86,6 +86,7 @@ switch cmd = process.args[0]
     borg[cmd] fqdn: process.args[1], (err) ->
       if err
         process.stderr.write 'Error: '+err+"\n"
+        console.trace()
         process.exit 1
 
   when 'test'
