@@ -38,7 +38,7 @@ module.exports = (log) -> Aws =
         --availability-zone #{locals.aws_zone}
         --size #{locals.aws_ebs_volume.size}
         --volume-type #{locals.aws_ebs_volume.type}
-        #{if locals.aws_ebs_volume.iops then "--iops #{local.aws_ebs_volume.iops}" else ''}
+        #{if locals.aws_ebs_volume.iops then "--iops #{locals.aws_ebs_volume.iops}" else ''}
       """, (err, data) ->
         throw err if err
         locals.aws_ebs_volume.id = data.VolumeId
@@ -77,6 +77,7 @@ module.exports = (log) -> Aws =
         --instance-id #{res.instanceId} \
         ;
       """, (err, data) ->
+        throw err if err
         state = data.Reservations[0].Instances[0].State.Name
         log "instance state is \"#{state}\"..." if DEBUG
         return waitForInstanceToBecomeReady() if state isnt 'running'
@@ -92,6 +93,7 @@ module.exports = (log) -> Aws =
           --tag Key=Name,Value=#{name} \
           ;
         """, (err, data) ->
+          throw err if err
           if locals.aws_ebs_volume
             Aws.jsonCli """
             aws ec2 attach-volume
