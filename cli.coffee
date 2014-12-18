@@ -68,7 +68,7 @@ while args.length
     if key and value
       options[key] = value
     else if key
-      options[key] = args.shift()
+      options[key] = true
   else
     argv.push arg
 process.args = argv
