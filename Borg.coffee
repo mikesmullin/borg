@@ -223,7 +223,7 @@ class Borg
           if value is null # delete
             delete pointer[key]
           else # write
-            pointer[key] = value
+            pointer[key] = _.merge {}, pointer[key], value
           fs.writeFileSync memory_file, JSON.stringify memory, null, 2
           return
       else
