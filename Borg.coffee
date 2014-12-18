@@ -147,7 +147,7 @@ class Borg
     scrubbed_locals = _.cloneDeep locals
     scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
     scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
-    console.log "You passed locals:\n"+JSON.stringify scrubbed_locals
+    console.log "Interpreted locals:\n"+JSON.stringify scrubbed_locals
 
     # parse fqdn into name parts
     if locals.fqdn
