@@ -81,7 +81,7 @@ class Borg
 
     # traverse and expand network hierarchy
     @eachServer ({ datacenter, group, type, instance, env, tld, subproject, server }) =>
-      _.merge server,
+      server = _.merge {},
         @networks.global,
         _.omit @networks.datacenters[datacenter], 'groups'
         _.omit @networks.datacenters[datacenter].groups[group], 'servers'
