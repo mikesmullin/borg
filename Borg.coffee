@@ -142,6 +142,10 @@ class Borg
       CoffeeScript = require 'coffee-script'
       data = eval CoffeeScript.compile process.options.locals, bare: true
       _.merge locals, data
+      if process.options.save
+        # memorize these changes for future references
+        console.log "Will remember instance locals:\n"+JSON.stringify data
+        @remember "/#{locals.fqdn}", data
 
     # helpful for debugging
     scrubbed_locals = _.cloneDeep locals
