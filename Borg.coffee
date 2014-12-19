@@ -104,6 +104,15 @@ class Borg
       for own dev, adapter of server.network when adapter.private and adapter.address
         server.private_ip ||= adapter.address
         break
+      server.ssh ||= {}
+      server.ssh.user ||= 'ubuntu'
+      server.ssh.host ||= server.public_ip or server.private_ip
+      server.ssh.port ||= 22
+      readKey = (file) -> ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{file}"
+      if server.provider is 'aws'
+        server.ssh.key ||= readKey server.aws_key
+      else if server.ssh.key_file
+        server.ssh.key ||= readKey server.ssh.key_file
 
       # expand function values
       for key, value of server when typeof value is 'function'
@@ -138,15 +147,12 @@ class Borg
 
   # compile all attributes into a single @server object hierarchy
   getServerObject: (locals, cb) ->
-    # allow users to pass CSON via --locals cli argument
     if process.options.locals
-      CoffeeScript = require 'coffee-script'
-      data = eval CoffeeScript.compile process.options.locals, bare: true
-      _.merge locals, data
+      _.merge locals, process.options.locals
       if process.options.save
         # memorize these changes for future references
-        console.log "Will remember instance locals:\n"+JSON.stringify data
-        @remember "/#{locals.fqdn}", data
+        console.log "Will remember instance locals:\n"+JSON.stringify process.options.locals
+        @remember "/#{locals.fqdn}", process.options.locals
 
     # helpful for debugging
     scrubbed_locals = _.cloneDeep locals
@@ -291,18 +297,8 @@ class Borg
 
 
   assimilate: (locals, cb) ->
-    locals.ssh ||= {}
-    locals.ssh.user ||= 'ubuntu'
-
     # load server attributes for named host
     @getServerObject locals, (@server) =>
-      @server.ssh.host ||= @server.public_ip or @server.private_ip
-      readKey = (file) -> ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{file}"
-      if @server.provider is 'aws'
-        @server.ssh.key ||= readKey @server.aws_key
-      else if @server.ssh.key_file
-        @server.ssh.key ||= readKey @server.ssh.key_file
-
       console.log "Server attributes before scripts:\n"+ JSON.stringify server, null, 2
 
       # the most basic resources come from a vendor repository
@@ -361,11 +357,6 @@ class Borg
         @cliConfirm "Proceed?", terminate
       else
         terminate()
-
-
-
-
-
 
 
 

@@ -72,6 +72,8 @@ while args.length
   else
     argv.push arg
 process.args = argv
+if options.locals # allow users to pass CSON via --locals cli argument
+  options.locals = eval (require 'coffee-script').compile options.locals, bare: true
 process.options = options
 
 Borg = require './Borg'
