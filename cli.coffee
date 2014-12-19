@@ -1,3 +1,6 @@
+_ = require 'lodash'
+spawn = require('child_process').spawn
+
 global.USING_CLI = true
 
 BORG_HELP = """
@@ -13,6 +16,7 @@ Commands:
   assimilate  execute scripted commands via ssh on hosts
   assemble    alias for create + assimilate
   destroy     terminate existing hosts
+  login       bulk open clusterssh to matching hosts
   test        simulate assimilation on localhost
   version     display currently installed version
   help        display more information about a command
@@ -23,7 +27,7 @@ Commands:
 BORG_HELP_TEST = """
 Usage: borg test <subcommand> <fqdn|regex>
 
-Performs scripted operations, including integration tests,
+Performs testing version of otherwise normal operations,
 across network-defined FQDNs matching the provided regular
 expression; aiding in development and integrity validation.
 
@@ -34,7 +38,6 @@ Subcommands:
   assimilate  execute scripts on existing test hosts
   checkup     execute test suite against existing hosts
   assemble    alias for create + assimilate + checkup
-  login       open ssh sessions to matching hosts
   destroy     terminate existing test hosts
 
 FQDN RegEx:
@@ -48,11 +51,44 @@ Other notes:
 """
 
 BORG_HELP_ASSIMILATE = """
-Usage: borg assimilate [options] <user:password@host ...>
+Usage: borg assimilate [options] fqdn
+
+Executes shell commands over SSH for the purpose of
+installing and configuring services on a remote machine
+matching the given network-defined FQDN.
 
 Options:
 
-  -r, --role  assign each node the following role
+  --locals=   one-time attribute override values given as CSON
+  --save      memorize locals given for future use
+
+CSON Format:
+
+  CoffeeScript Object Notation is like JSON but better.
+
+"""
+
+BORG_HELP_LOGIN = """
+Usage: borg login [options] <fqdn|regex>
+
+Spawn an external ClusterSSH `cssh` process passing one or more
+remote host IP and TCP port arguments for each network-defined
+FQDN matching the provided regular expression.
+
+NOTICE: `cssh` binary is 3rd-party dependency; install separately.
+
+Options:
+
+  --locals=   one-time attribute override values given as CSON
+  --save      bulk memorize locals given for future use
+
+FQDN RegEx:
+
+  Double-quoted, escaped string. Omit delimiters.
+
+CSON Format:
+
+  CoffeeScript Object Notation is like JSON but better.
 
 """
 
@@ -85,16 +121,44 @@ switch cmd = process.args[0]
     console.log "borg v#{pkg.version}\n"
 
   when 'list', 'create', 'assimilate', 'assemble', 'destroy'
+    if cmd is 'assimilate'
+      return console.log BORG_HELP_ASSIMILATE if process.args.length <= 1
     borg[cmd] fqdn: process.args[1], (err) ->
       if err
         process.stderr.write 'Error: '+err+"\n"
         console.trace()
         process.exit 1
 
+  when 'login'
+    return console.log BORG_HELP_LOGIN if process.args.length <= 1
+    rx = new RegExp process.args[1], 'g'
+    borg.flattenNetworkAttributes()
+    servers = []
+    borg.eachServer ({ server }) ->
+      if null isnt server.fqdn.match(rx)
+        servers.push server
+    if servers.length
+      console.log "Will connect to the following servers:\n"
+      for server in servers
+        if process.options.locals
+          _.merge server, process.options.locals
+        console.log "  #{server.ssh.host}:#{server.ssh.port} \t#{server.fqdn}"
+      if process.options.save
+        console.log "\nWill bulk remember instance locals:\n"+JSON.stringify process.options.locals
+      borg.cliConfirm "Proceed?", ->
+        args = []
+        for server in servers
+          if process.options.save
+            borg.remember "/#{server.fqdn}", process.options.locals
+          args.push "#{server.ssh.host}:#{server.ssh.port}"
+        spawn 'cssh', args, stdio: 'inherit'
+    else
+      process.stderr.write "\n0 existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
+
   when 'test'
     return console.log BORG_HELP_TEST if process.args.length <= 1
     switch process.args[1]
-      when 'list', 'create', 'assimilate', 'assemble', 'checkup', 'login', 'destroy'
+      when 'list', 'create', 'assimilate', 'assemble', 'checkup', 'destroy'
         (require './test')(borg)
       else
         console.log INVALID+BORG_HELP_TEST
@@ -106,12 +170,14 @@ switch cmd = process.args[0]
       switch process.args[1]
         when 'assimilate'
           console.log BORG_HELP_ASSIMILATE
+        when 'login'
+          console.log BORG_HELP_LOGIN
         when 'test'
           if process.args.length is 2
             console.log BORG_HELP_TEST
           else
             switch process.args[2]
-              when 'list', 'create', 'assimilate', 'checkup', 'login', 'destroy'
+              when 'list', 'create', 'assimilate', 'checkup', 'destroy'
                 console.log BORG_HELP_NONE
               else
                 console.log INVALID+BORG_HELP_TEST
