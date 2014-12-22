@@ -274,12 +274,12 @@ class Borg
               console.log "got instance_id #{id}..."
               @remember "/#{locals.fqdn}/aws_instance_id", locals.aws_instance_id = id
             ), (instance) ->
+              locals.public_ip = instance.publicIpAddress
+              locals.private_ip = instance.privateIpAddress
+
               ms = 60*1000*1
               console.log "waiting #{ms}ms extra for aws to REALLY be ready..."
-              delay ms, -> # needs time to initialize or ssh connect and cmds will hang indefinitely
-                locals.public_ip = instance.publicIpAddress
-                locals.private_ip = instance.privateIpAddress
-                next()
+              delay ms, next # needs time to initialize or ssh connect and cmds will hang indefinitely
 
       next = =>
         @remember "/#{locals.fqdn}/private_ip", locals.private_ip
