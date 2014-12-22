@@ -234,7 +234,10 @@ class Borg
           if value is null # delete
             delete pointer[key]
           else # write
-            pointer[key] = _.merge {}, pointer[key], value
+            if typeof pointer[key] is 'object' and typeof value is 'object'
+              pointer[key] = _.merge {}, pointer[key], value # merge existing objects
+            else
+              pointer[key] = value # otherwise override
           fs.writeFileSync memory_file, JSON.stringify memory, null, 2
           return
       else
