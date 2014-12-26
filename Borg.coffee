@@ -139,6 +139,7 @@ class Borg
     return false
 
   defineNetworkServer: (locals) ->
+    return {} unless locals.group # skip if group is not provided
     @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type] ||= {}
     @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type].instances ||= {}
     server = @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type].instances[locals.instance] ||= {}
