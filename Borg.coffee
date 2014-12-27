@@ -382,6 +382,12 @@ class Borg
 
 
   assemble: (locals, cb) ->
+    # people like to customize the ssh port for security reasons.
+    # however, a brand new vm is usually listening on the default port.
+    # therefore we ignore user customizations and presume to use port tcp/22 with assemble
+    # unless the user specifies otherwise via cli --locals=ssh:port:
+    locals.ssh ||= {}
+    locals.ssh.port ||= 22
     @create locals, =>
       @assimilate locals, cb
 
