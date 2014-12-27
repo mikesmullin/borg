@@ -113,8 +113,7 @@ class Borg
     # transform functions into objects with sneaky javascript getters;
     # looks like a non-function but in fact yields the result of a function every time
     for key, value of server when typeof value is 'function'
-      o = new Object
-      fn = Object.defineProperty o, key, get: server[key].bind server: server
+      fn = Object.defineProperty server, key, get: server[key].bind server: server
       server[key] = fn
 
     return
