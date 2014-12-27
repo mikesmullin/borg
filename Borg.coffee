@@ -71,22 +71,24 @@ class Borg
     return
 
   # merge/inherit network attributes down into a given instance
-  _flattenInstanceAttributes: (cb) -> (o) =>
-    cb o, _.merge {},
+  _flattenInstanceAttributes: (datacenter, group, type, instance, instance_attrs={}) =>
+    return _.merge {},
       @networks.global,
-      _.omit @networks.datacenters[o.datacenter], 'groups'
-      _.omit @networks.datacenters[o.datacenter].groups[o.group], 'servers'
-      _.omit @networks.datacenters[o.datacenter].groups[o.group].servers[o.type], 'instances'
-      o.server
-    return
+      _.omit @networks.datacenters[datacenter], 'groups'
+      _.omit @networks.datacenters[datacenter].groups[group], 'servers'
+      _.omit @networks.datacenters[datacenter].groups[group].servers[type], 'instances'
+      instance_attrs
+      { # these are statically defined based on position in the network object
+        # hierarchy; we do not allow any crazy local overrides of these by the user
+        datacenter: datacenter
+        group: group
+        type: type
+        instance: instance
+      }
 
   # calculate dynamic attribute values based on other attribute values
   # may be called multiple times
   _calculateAttributeValues: ({ datacenter, group, type, instance, env, tld, subproject, server }) ->
-    server.datacenter ||= datacenter
-    server.group ||= group
-    server.type ||= type
-    server.instance ||= instance
     server.environment ||= switch server.env
       when 'dev' then 'development'
       when 'stage' then 'staging'
@@ -123,22 +125,17 @@ class Borg
       server: {}
       possible_group: undefined
 
-    # First Pass
-    @eachServer @_flattenInstanceAttributes (o, flattened_attributes) =>
-      # rewrite global @network object with flattened attributes accessible inside each instance
-      _.merge o.server, flattened_attributes
-
     # inject memorized servers and their attributes into network hierarchy
-    # needs to happen here because it depends on flattened attributes
-    # to reverse-lookup group names when they are omitted from memory.json
     memory = @remember '/'
     for fqdn, vvvv of memory when (mlocals = @parseFQDN fqdn: fqdn)
       _.merge mlocals, vvvv
       mlocals.group = @_lookupGroupName mlocals unless mlocals.group
       @_defineInstance mlocals
 
-    # Second Pass
     @eachServer (o) =>
+      # rewrite global @network object with flattened attributes accessible inside each instance
+      _.merge o.server, @_flattenInstanceAttributes o.datacenter, o.group, o.type, o.instance, o.server
+
       # some attribute values are dynamically calculated
       @_calculateAttributeValues o
 
@@ -174,19 +171,17 @@ class Borg
     # NOTICE: network-defined type and instance help, but aren't required
     for group, v of @networks.datacenters[locals.datacenter].groups
       if v.servers?
-        if v.servers[locals.type]?.instances?
-          # dc, env, type, instance defined == best match
-          if v.servers[locals.type].instances[locals.instance]?.env is locals.env
-            return group
-          else
-            # dc, env, type defined on different instance == good match
-            for instance, vv in v.servers[locals.type].instances when vv.env is locals.env
-              return group
+        # dc, env, type, instance defined == best match
+        if v.servers[locals.type]?.instances?[locals.instance]?.env is locals.env
+          return group
         else
-          # dc, env defined on different type/instance == poor match (ask human to approve)
-          for type, vv in v.servers when vv.instances?
-            for instance, vvv in vv.instances when vvv.env is locals.env
-              return group
+          # dc, env, type defined without instance == good match
+          # dc, env defined without type or instance == poor match (ask human to approve)
+          # NOTICE: must project what the env WOULD be if type and instance were defined
+          flattened_attributes = @_flattenInstanceAttributes locals.datacenter, group, locals.type
+          if flattened_attributes.group is group
+            return group
+
     console.trace()
     throw "unable to find any group matching locals #{JSON.stringify locals}"
 
@@ -308,6 +303,7 @@ class Borg
           last_group = server.group
         console.log "#{((server.public_ip or server.private_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
     process.stderr.write "\n#{count} network server definition(s) found.\n\n"
+
 
   create: (locals, cb) ->
     @getServerObject locals, (@server) =>
