@@ -57,6 +57,7 @@ class Borg
       for group, vv of v.groups
         for type, vvv of vv.servers
           for instance, vvvv of vvv.instances
+            # developer may return false to break from the loop
             return false if false is each_cb({
               datacenter: datacenter
               group: group
@@ -67,70 +68,94 @@ class Borg
               subproject: vvvv.subproject
               server: vvvv
             })
+    return
 
-  flattenNetworkAttributes: (locals=null) ->
-    _server = {}
-    found = false
-    possible_group = undefined
+  # merge/inherit network attributes down into a given instance
+  _flattenInstanceAttributes: (cb) -> (o) =>
+    cb o, _.merge {},
+      @networks.global,
+      _.omit @networks.datacenters[o.datacenter], 'groups'
+      _.omit @networks.datacenters[o.datacenter].groups[o.group], 'servers'
+      _.omit @networks.datacenters[o.datacenter].groups[o.group].servers[o.type], 'instances'
+      o.server
+    return
+
+  # calculate dynamic attribute values based on other attribute values
+  # may be called multiple times
+  _calculateAttributeValues: ({ datacenter, group, type, instance, env, tld, subproject, server }) ->
+    server.datacenter ||= datacenter
+    server.group ||= group
+    server.type ||= type
+    server.instance ||= instance
+    server.environment ||= switch server.env
+      when 'dev' then 'development'
+      when 'stage' then 'staging'
+      when 'prod' then 'production'
+      else server.env
+    server.fqdn ||= "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
+    server.hostname ||= "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
+
+    for own dev, adapter of server.network when adapter.private and adapter.address
+      server.private_ip ||= adapter.address
+      break
+    server.ssh ||= {}
+    server.ssh.user ||= 'ubuntu'
+    server.ssh.host ||= server.public_ip or server.private_ip
+    server.ssh.port ||= 22
+    readKey = (file) -> ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{file}"
+    if server.provider is 'aws'
+      server.ssh.key ||= readKey server.aws_key
+    else if server.ssh.key_file
+      server.ssh.key ||= readKey server.ssh.key_file
+
+    # transform functions into objects with sneaky javascript getters;
+    # looks like a non-function but in fact yields the result of a function every time
+    for key, value of server when typeof value is 'function'
+      o = new Object
+      fn = Object.defineProperty o, key, get: server[key].bind server: server
+      server[key] = fn
+
+    return
+
+  flattenNetworkAttributes: (locals) ->
+    result =
+      found: false
+      server: {}
+      possible_group: undefined
+
+    # First Pass
+    @eachServer @_flattenInstanceAttributes (o, flattened_attributes) =>
+      # rewrite global @network object with flattened attributes accessible inside each instance
+      _.merge o.server, flattened_attributes
 
     # inject memorized servers and their attributes into network hierarchy
+    # needs to happen here because it depends on flattened attributes
+    # to reverse-lookup group names when they are omitted from memory.json
     memory = @remember '/'
-    for fqdn, vvvv of memory when (_locals = @parseFQDN fqdn: fqdn)
-      _.merge _locals, vvvv
-      @defineNetworkServer _locals
+    for fqdn, vvvv of memory when (mlocals = @parseFQDN fqdn: fqdn)
+      _.merge mlocals, vvvv
+      mlocals.group = @_lookupGroupName mlocals unless mlocals.group
+      @_defineInstance mlocals
 
-    # traverse and expand network hierarchy
-    @eachServer ({ datacenter, group, type, instance, env, tld, subproject, server }) =>
-      d = _.merge {},
-        @networks.global,
-        _.omit @networks.datacenters[datacenter], 'groups'
-        _.omit @networks.datacenters[datacenter].groups[group], 'servers'
-        _.omit @networks.datacenters[datacenter].groups[group].servers[type], 'instances'
-        server
-      _.merge server, d
+    # Second Pass
+    @eachServer (o) =>
+      # some attribute values are dynamically calculated
+      @_calculateAttributeValues o
 
-      # plus a few implicitly calculated attributes
-      server.datacenter ||= datacenter
-      server.group ||= group
-      server.type ||= type
-      server.instance ||= instance
-      server.environment ||= switch server.env
-        when 'dev' then 'development'
-        when 'stage' then 'staging'
-        when 'prod' then 'production'
-        else server.env
-      server.fqdn ||= "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}.#{server.tld}"
-      server.hostname ||= "#{server.datacenter}-#{server.env}-#{server.type}#{server.instance}#{if server.subproject then '-'+server.subproject else ''}"
-      for own dev, adapter of server.network when adapter.private and adapter.address
-        server.private_ip ||= adapter.address
-        break
-      server.ssh ||= {}
-      server.ssh.user ||= 'ubuntu'
-      server.ssh.host ||= server.public_ip or server.private_ip
-      server.ssh.port ||= 22
-      readKey = (file) -> ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{file}"
-      if server.provider is 'aws'
-        server.ssh.key ||= readKey server.aws_key
-      else if server.ssh.key_file
-        server.ssh.key ||= readKey server.ssh.key_file
+      # the current server will also have cli locals applied to it
+      if typeof locals is 'object' and
+        locals.datacenter is o.datacenter and
+        locals.env is o.server.env and
+        locals.tld is o.server.tld and
+        locals.subproject is o.server.subproject # can both be null
+          result.possible_group ||= o.group unless locals.group # optionally reverse-lookup server group
+          if locals.type is o.type and
+            locals.instance is o.instance
+              result.found = true
+              _.merge o.server, locals # local attributes override everything else for server
+              result.server = o.server
 
-      # expand function values
-      for key, value of server when typeof value is 'function'
-        server[key] = value.apply server: server
-
-      # determine if current server
-      if locals isnt null and
-        locals.datacenter is datacenter and
-        locals.env is server.env and
-        locals.tld is server.tld and
-        locals.subproject is server.subproject # can both be null
-          possible_group ||= group unless locals.group # optionally reverse-lookup server group
-          if locals.type is type and
-            locals.instance is instance
-              found = true
-              _.merge server, locals # local attributes override everything else for server
-              _server = server
-    return found: found, server: _server, possible_group: possible_group
+    return result
 
   parseFQDN: (locals) ->
     if null isnt matches = locals.fqdn.match /^(test-)?([a-z]{2,3}-[a-z]{2,3})-([a-z]{1,5})-([a-z-]+)(\d{2,4})(?:-([a-z]+))?(?:\.(\w+\.[a-z]{2,3}))$/i
@@ -138,13 +163,32 @@ class Borg
       return locals
     return false
 
-  defineNetworkServer: (locals) ->
-    return {} unless locals.group # skip if group is not provided
+  _defineInstance: (locals) ->
     @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type] ||= {}
     @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type].instances ||= {}
     server = @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type].instances[locals.instance] ||= {}
     _.merge server, locals # local attributes override everything else for server
-    return server
+
+  _lookupGroupName: (locals) ->
+    # NOTICE: must flatten hierarchy before calling this function
+    # NOTICE: network-defined type and instance help, but aren't required
+    for group, v of @networks.datacenters[locals.datacenter].groups
+      if v.servers?
+        if v.servers[locals.type]?.instances?
+          # dc, env, type, instance defined == best match
+          if v.servers[locals.type].instances[locals.instance]?.env is locals.env
+            return group
+          else
+            # dc, env, type defined on different instance == good match
+            for instance, vv in v.servers[locals.type].instances when vv.env is locals.env
+              return group
+        else
+          # dc, env defined on different type/instance == poor match (ask human to approve)
+          for type, vv in v.servers when vv.instances?
+            for instance, vvv in vv.instances when vvv.env is locals.env
+              return group
+    console.trace()
+    throw "unable to find any group matching locals #{JSON.stringify locals}"
 
   # compile all attributes into a single @server object hierarchy
   getServerObject: (locals, cb) ->
@@ -169,15 +213,19 @@ class Borg
       @die 'missing required locals.fqdn or all of locals: datacenter, env, type, instance, tld. cannot continue.'
 
     # server object begins with network attributes from matching fqdn
-    { found,  server, possible_group } = @flattenNetworkAttributes locals
+    { found, server, possible_group } = @flattenNetworkAttributes locals
     if found
       return cb server
     else
       @die "Unable to locate server within network attributes." unless possible_group # TODO: could define an automatic group name, but meh.
-      console.log "WARNING! Server was not defined in network attributes. Will add it under '#{possible_group}' group."
+      console.log """
+      \nWARNING! Instance "#{locals.type}#{locals.instance}" is undefined in network.coffee and memory.json.
+      A NEW instance will be appended to memory.json based upon attributes
+      matching dc: "#{locals.datacenter}", group: "#{possible_group}", env: "#{locals.env}", type: "#{locals.type}"
+      """
       @cliConfirm "Proceed?", =>
         locals.group = possible_group
-        @defineNetworkServer locals
+        @_defineInstance locals
         { server } = @flattenNetworkAttributes locals # again, now that our server is defined
         return cb server
 
