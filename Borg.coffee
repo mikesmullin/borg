@@ -307,7 +307,6 @@ class Borg
 
   create: (locals, cb) ->
     @getServerObject locals, (@server) =>
-      @remember "/#{locals.fqdn}/group", server.group
       #console.log "Network attributes:\n"+ JSON.stringify @networks, null, 2
 
       provision = =>
