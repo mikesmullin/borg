@@ -176,9 +176,9 @@ class Borg
         else
           # dc, env, type defined without instance == good match
           # dc, env defined without type or instance == poor match (ask human to approve)
-          # NOTICE: must project what the env WOULD be if type and instance were defined
-          flattened_attributes = @_flattenInstanceAttributes locals.datacenter, group, locals.type
-          if flattened_attributes.group is group
+          # NOTICE: here we project what the env WOULD be if type and instance WERE defined
+          flattened_attributes = @_flattenInstanceAttributes locals.datacenter, group, locals.type, locals.instance, {}
+          if flattened_attributes.env is locals.env
             return group
 
     console.trace()
