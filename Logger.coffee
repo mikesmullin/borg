@@ -25,7 +25,7 @@ class Logger
 
     process.stdout.write "#{Color.bright_white}#{new Date - @started}ms#{Color.reset} "+
       "#{if @host then "#{RainbowIndex @host}#{@host}#{Color.reset} " else ""}"+
-      "#{Color.black}"+
+      "#{Color.grey}"+
       "#{if o.type is 'out' then '' else "[#{o.type}] "}"+
       "#{Color[o.type_color[o.type]]}"+
       "#{s}"+

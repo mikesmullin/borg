@@ -8,14 +8,6 @@ global.DEBUG = true
 
 module.exports =
 class Borg
-  # process
-  log: -> Logger.out.apply Logger, arguments
-  die: (reason) ->
-    @log type: 'err', reason
-    console.trace()
-    process.exit 1
-    return
-
   constructor: (o) ->
     @cwd = o?.cwd or process.cwd()
     @networks = require path.join @cwd, 'attributes', 'networks'
@@ -24,22 +16,26 @@ class Borg
   # async flow control
   _Q: []
   next: (err) => @_Q.splice 0, @_Q.length-1 if err; @_Q.shift()?.apply null, arguments
-  then: (fn, args...) ->
-    @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn)+' with args: '+JSON.stringify(args) unless typeof fn is 'function'
-    @_Q.push(=> args.push @next; fn.apply null, args); @
+  then: (fn) ->
+    @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn) unless typeof fn is 'function'
+    @_Q.push => fn @next
+    @
   finally: (fn) => @_Q.push fn; @next()
-  sub: (fn, cb) =>
-    oldQ = @_Q
-    @_Q = []
-    fn (warn) =>
-      @log warn if warn # errors passed to end() are considered non-fatal warnings
-      # if you meant for them to be fatal, you shuold call @die() instead of end()
-      @_Q.splice 0, @_Q.length-1 # skip any remaining functions
-      @_Q.shift()?.apply null
-    @finally (err) =>
-      @die err if err
-      @_Q = oldQ
-      cb()
+  inject_flow: (cb, fn) =>
+    oldQ = @_Q # backup
+    @_Q = [] # set new empty array
+    fn() # enqueue all
+    @finally => # kick-start
+      @_Q = oldQ # restore backup
+      cb.apply arguments # resume chain, forwarding arguments
+
+  # process
+  log: -> args = arguments; (cb) -> Logger.out.apply Logger, args
+  die: (reason) ->
+    Logger.out type: 'err', reason
+    console.trace()
+    process.exit 1
+    return
 
   # attributes
   networks: null
@@ -243,7 +239,7 @@ class Borg
   # scripts
   import: (paths...) ->
     p = path.join.apply null, paths
-    @log "importing #{p}..."
+    Logger.out "importing #{p}..."
     try
       stats = fs.statSync p
       if stats.isDirectory()
@@ -389,6 +385,7 @@ class Borg
     locals.ssh.port ||= 22
     @create locals, =>
       @assimilate locals, cb
+        # TODO: also run checkup
 
 
   destroy: (locals, cb) ->
