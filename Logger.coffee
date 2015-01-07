@@ -27,7 +27,7 @@ class Logger
       "#{if @host then "#{RainbowIndex @host}#{@host}#{Color.reset} " else ""}"+
       "#{Color.grey}"+
       "#{if o.type is 'out' then '' else "[#{o.type}] "}"+
-      "#{Color[o.type_color[o.type]]}"+
+      "#{Color.reset}#{Color[o.type_color[o.type]]}"+
       "#{s}"+
       "#{if o.type is 'out' or o.newline is false then "\r" else "\n"}"+
       "#{Color.reset}"
