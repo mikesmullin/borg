@@ -15,18 +15,31 @@ class Borg
 
   # async flow control
   _Q: []
-  next: (err) => @_Q.splice 0, @_Q.length-1 if err; @_Q.shift()?.apply null, arguments
+  next: (err) =>
+    if err
+      #console.log '@next() was passed an error. args: ', arguments
+      @_Q.splice 0, @_Q.length-1
+    @_Q.shift()?.apply null, arguments
   then: (fn) ->
+    #console.log '@then called with fn: '+ fn + '\n and @_Q was: ',@_Q
     @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn) unless typeof fn is 'function'
-    @_Q.push => fn @next
+    @_Q.push =>
+      fn @next
+      #console.log '@then just finished executing fn: ', fn
     @
-  finally: (fn) => @_Q.push fn; @next()
-  inject_flow: (cb, fn) =>
+  finally: (fn) =>
+    @_Q.push fn # append final function as end of chain
+    #console.log 'finally called with Q as: ', @_Q
+    @next() # ignite firecracker chain-reaction
+  inject_flow: (fn) => (cb) =>
+    #console.log 'inject_flow cb: ', cb.toString()
     oldQ = @_Q # backup
     @_Q = [] # set new empty array
     fn() # enqueue all
+    #console.log "@_Q after injection fn: ", @_Q
     @finally => # kick-start
       @_Q = oldQ # restore backup
+      #console.log "reached final function. Q is now ", @_Q
       cb.apply arguments # resume chain, forwarding arguments
 
   # process
