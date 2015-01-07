@@ -19,14 +19,16 @@ class Borg
     if err
       @_Q.splice 0, @_Q.length-1
     @_Q.shift()?.apply null, arguments
+    return
   then: (fn) ->
     @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn) unless typeof fn is 'function'
     @_Q.push =>
       fn @next
-    @
+    return
   finally: (fn) =>
     @_Q.push fn # append final function as end of chain
     @next() # ignite firecracker chain-reaction
+    return
   inject_flow: (fn) => (cb) =>
     oldQ = @_Q # backup
     @_Q = [] # set new empty array
@@ -34,6 +36,7 @@ class Borg
     @finally => # kick-start
       @_Q = oldQ # restore backup
       cb.apply arguments # resume chain, forwarding arguments
+    return
 
   # process
   log: -> args = arguments; (cb) -> Logger.out.apply Logger, args; cb()
