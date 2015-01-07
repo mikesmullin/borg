@@ -30,7 +30,7 @@ class Borg
       cb.apply arguments # resume chain, forwarding arguments
 
   # process
-  log: -> args = arguments; (cb) -> Logger.out.apply Logger, args
+  log: -> args = arguments; (cb) -> Logger.out.apply Logger, args; cb()
   die: (reason) ->
     Logger.out type: 'err', reason
     console.trace()
