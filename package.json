@@ -1,6 +1,6 @@
 {
   "name": "borg",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Automated provisioning and deployment with Node.JS.",
   "bin": "bin/borg",
   "main": "Borg.coffee",
