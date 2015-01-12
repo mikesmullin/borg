@@ -50,7 +50,7 @@ module.exports = (log) -> Aws =
         --region #{locals.aws_region}
         --image-id #{locals.aws_image}
         --count 1
-        #{if locals.aws_zone then '--placement=\'{"AvailabilityZone":"'+locals.aws_zone+'","Tenancy": "default"}\'' else ''}
+        #{if locals.aws_zone then '--placement=\'{"AvailabilityZone":"'+locals.aws_zone+'","Tenancy":"'+(locals.aws_tenancy or 'default')+'"}\'' else ''}
         --instance-type #{locals.aws_size}
         --key-name #{locals.aws_key}
         #{if locals.aws_security_groups then "--security-groups #{locals.aws_security_groups.join ','}" else ''}
