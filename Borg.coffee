@@ -32,27 +32,27 @@ class Borg
   decrypt: _crypt 'de'
 
   # async flow control
-  _Q: []
+  _Q = []
   next: (err) =>
     if err
-      @_Q.splice 0, @_Q.length-1
-    @_Q.shift()?.apply null, arguments
+      _Q.splice 0, _Q.length-1
+    _Q.shift()?.apply null, arguments
     return
   then: (fn) ->
     @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn) unless typeof fn is 'function'
-    @_Q.push =>
+    _Q.push =>
       fn @next
     return
   finally: (fn) =>
-    @_Q.push fn # append final function as end of chain
+    _Q.push fn # append final function as end of chain
     @next() # ignite firecracker chain-reaction
     return
   inject_flow: (fn) => (cb) =>
-    oldQ = @_Q # backup
-    @_Q = [] # set new empty array
+    oldQ = _Q # backup
+    _Q = [] # set new empty array
     fn() # enqueue all
     @finally => # kick-start
-      @_Q = oldQ # restore backup
+      _Q = oldQ # restore backup
       cb.apply arguments # resume chain, forwarding arguments
     return
 
@@ -94,7 +94,7 @@ class Borg
     return
 
   # merge/inherit network attributes down into a given instance
-  _flattenInstanceAttributes: (datacenter, group, type, instance, instance_attrs={}) =>
+  _flattenInstanceAttributes = (datacenter, group, type, instance, instance_attrs={}) =>
     return _.merge {},
       @networks.global,
       _.omit @networks.datacenters[datacenter], 'groups'
@@ -111,7 +111,7 @@ class Borg
 
   # calculate dynamic attribute values based on other attribute values
   # may be called multiple times
-  _calculateAttributeValues: ({ datacenter, group, type, instance, env, tld, subproject, server }) ->
+  _calculateAttributeValues = ({ datacenter, group, type, instance, env, tld, subproject, server }) ->
     server.environment ||= switch server.env
       when 'dev' then 'development'
       when 'stage' then 'staging'
@@ -151,15 +151,15 @@ class Borg
     memory = @remember '/'
     for fqdn, vvvv of memory when (mlocals = @parseFQDN fqdn: fqdn)
       _.merge mlocals, vvvv
-      mlocals.group = @_lookupGroupName mlocals unless mlocals.group
-      @_defineInstance mlocals
+      mlocals.group = _lookupGroupName mlocals unless mlocals.group
+      _defineInstance mlocals
 
     @eachServer (o) =>
       # rewrite global @network object with flattened attributes accessible inside each instance
-      _.merge o.server, @_flattenInstanceAttributes o.datacenter, o.group, o.type, o.instance, o.server
+      _.merge o.server, _flattenInstanceAttributes o.datacenter, o.group, o.type, o.instance, o.server
 
       # some attribute values are dynamically calculated
-      @_calculateAttributeValues o
+      _calculateAttributeValues o
 
       # the current server will also have cli locals applied to it
       if typeof locals is 'object' and
@@ -182,13 +182,13 @@ class Borg
       return locals
     return false
 
-  _defineInstance: (locals) ->
+  _defineInstance = (locals) ->
     @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type] ||= {}
     @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type].instances ||= {}
     server = @networks.datacenters[locals.datacenter].groups[locals.group].servers[locals.type].instances[locals.instance] ||= {}
     _.merge server, locals # local attributes override everything else for server
 
-  _lookupGroupName: (locals) ->
+  _lookupGroupName = (locals) ->
     # NOTICE: must flatten hierarchy before calling this function
     # NOTICE: network-defined type and instance help, but aren't required
     for group, v of @networks.datacenters[locals.datacenter].groups
@@ -200,7 +200,7 @@ class Borg
           # dc, env, type defined without instance == good match
           # dc, env defined without type or instance == poor match (ask human to approve)
           # NOTICE: here we project what the env WOULD be if type and instance WERE defined
-          flattened_attributes = @_flattenInstanceAttributes locals.datacenter, group, locals.type, locals.instance, {}
+          flattened_attributes = _flattenInstanceAttributes locals.datacenter, group, locals.type, locals.instance, {}
           if flattened_attributes.env is locals.env
             return group
 
@@ -242,7 +242,7 @@ class Borg
       """
       @cliConfirm "Proceed?", =>
         locals.group = possible_group
-        @_defineInstance locals
+        _defineInstance locals
         { server } = @flattenNetworkAttributes locals # again, now that our server is defined
         return cb server
 
