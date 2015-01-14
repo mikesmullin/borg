@@ -5,6 +5,12 @@ require 'sugar'
 Logger = require './Logger'
 global.DEBUG = true
 { delay } = require './util'
+crypto = require 'crypto'
+secret_path = path.join process.cwd(), 'secret'
+try
+  secret = fs.readFileSync secret_path
+catch e
+  secret = false
 
 module.exports =
 class Borg
@@ -12,6 +18,18 @@ class Borg
     @cwd = o?.cwd or process.cwd()
     @networks = require path.join @cwd, 'attributes', 'networks'
     @server = new Object
+
+  _crypt = (cmd) -> (s) ->
+    if secret is false
+      process.stderr.write "WARNING: File #{secret_path} missing or not readable. @#{cmd}crypt() is disabled.\n"
+      return s
+    cipher = crypto["create#{if cmd is 'en' then 'C' else 'Dec'}ipher"] 'aes-256-cbc', secret
+    return Buffer.concat [
+      cipher.update s
+      cipher.final()
+    ]
+  encrypt: _crypt 'en'
+  decrypt: _crypt 'de'
 
   # async flow control
   _Q: []

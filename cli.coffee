@@ -1,5 +1,7 @@
 _ = require 'lodash'
 spawn = require('child_process').spawn
+path = require 'path'
+fs = require 'fs'
 
 global.USING_CLI = true
 
@@ -18,6 +20,7 @@ Commands:
   destroy     terminate existing hosts
   login       bulk open clusterssh to matching hosts
   test        simulate assimilation on localhost
+  encrypt     encrypt files for secure sharing
   version     display currently installed version
   help        display more information about a command
 
@@ -92,6 +95,19 @@ CSON Format:
 
 """
 
+BORG_HELP_CRYPT = """
+Usage: borg encrypt|decrypt <file ...>
+
+Symmetrically crypt file(s) on disk using AES-256-CBC and
+a `./secret` you provide in the cwd. This makes them safer to
+share with others (e.g., via an untrusted medium or repository)
+as long as you do not also share `./secret` the same way.
+
+These files are be readable by Borg, and are optionally
+decrypted when required for upload to remote hosts.
+
+"""
+
 BORG_HELP_NONE = "Sorry, no help for that, yet."
 INVALID = "Invalid command.\n\n"
 
@@ -163,6 +179,15 @@ switch cmd = process.args[0]
       else
         console.log INVALID+BORG_HELP_TEST
 
+  when 'encrypt', 'decrypt'
+    return console.log BORG_HELP_CRYPT if process.args.length <= 1
+    for file in process.args.slice 1
+      file_path = path.join process.cwd(), file
+      console.log "#{cmd}ing: #{file_path}..."
+      # TODO: make this work in chunks as to not exhaust available memory with large files
+      fs.writeFileSync file_path, borg[cmd] fs.readFileSync file_path
+    process.exit 0
+
   when '-h', '--help', 'help'
     if process.args.length is 1
       console.log BORG_HELP
@@ -181,6 +206,8 @@ switch cmd = process.args[0]
                 console.log BORG_HELP_NONE
               else
                 console.log INVALID+BORG_HELP_TEST
+        when 'encrypt'
+          console.log BORG_HELP_CRYPT
         else
           console.log INVALID+BORG_HELP_TEST
   else
