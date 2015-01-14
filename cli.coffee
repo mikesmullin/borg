@@ -131,6 +131,7 @@ process.options = options
 Borg = require './Borg'
 borg = new Borg
 
+return console.log BORG_HELP if process.args.length is 0
 switch cmd = process.args[0]
   when '-V', '--version', 'version'
     pkg = require './package.json'
@@ -212,4 +213,3 @@ switch cmd = process.args[0]
           console.log INVALID+BORG_HELP_TEST
   else
     console.log INVALID+BORG_HELP
-

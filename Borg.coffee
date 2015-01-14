@@ -16,7 +16,12 @@ module.exports =
 class Borg
   constructor: (o) ->
     @cwd = o?.cwd or process.cwd()
-    @networks = require path.join @cwd, 'attributes', 'networks'
+    try
+      networks_path = path.join @cwd, 'attributes', 'networks.coffee'
+      @networks = require networks_path
+    catch e
+      process.stderr.write "WARNING: File #{networks_path} missing or unreadable.\n"
+      @networks = {}
     @server = new Object
 
   _crypt = (cmd) -> (s) ->
