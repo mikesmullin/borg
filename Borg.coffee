@@ -52,7 +52,22 @@ class Borg
       else # async
         fn @next
     return
-  finally: (fn) =>
+  call: (fn, args...) -> (cb) ->
+    if Array.isArray fn
+      root = fn[0]
+      fn = fn[0][fn[1]]
+    else
+      root = null
+    last = args[args.length-1]
+    if typeof last is 'object' and 'err' of last and typeof last.err is 'function'
+      err_cb = args.pop().err
+    fn.apply root, args.concat (err) ->
+      if err_cb and err
+        err_cb err # intercept and handle error with custom callback
+        cb() # don't forward err
+      else
+        cb err # forward any errors
+  finally: (fn) ->
     _Q.push fn # append final function as end of chain
     @next() # ignite firecracker chain-reaction
     return
