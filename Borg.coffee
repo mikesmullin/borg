@@ -38,7 +38,7 @@ class Borg
 
   # async flow control
   _Q = []
-  next: (err) =>
+  next: (err) ->
     if err
       _Q.splice 0, _Q.length-1
     _Q.shift()?.apply null, arguments
