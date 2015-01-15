@@ -61,7 +61,7 @@ module.exports = class Ssh
         cb code, signal if typeof cb is 'function'
     return
 
-  put: (local, remote, cb) ->
+  put: (local, remote, cb) =>
     @sftp.fastPut local, remote, cb
 
   close: ->
