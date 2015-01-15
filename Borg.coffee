@@ -71,10 +71,13 @@ class Borg
     _Q.push fn # append final function as end of chain
     @next() # ignite firecracker chain-reaction
     return
-  inject_flow: (fn) => (cb) =>
+  inject_flow: (fn) -> (cb) =>
     oldQ = _Q # backup
-    _Q = [] # set new empty array
-    fn() # enqueue all
+    _Q = thisQ = [] # set new empty array
+    fn (warn) => # enqueue all, providing end() method
+      @log(warn)(->) if warn # errors passed to end() are considered non-fatal warnings
+      # if you meant for them to be fatal, you should call @die() instead of end()
+      thisQ.splice 0, thisQ.length-1 # skip any remaining functions
     @finally => # kick-start
       _Q = oldQ # restore backup
       cb.apply arguments # resume chain, forwarding arguments
