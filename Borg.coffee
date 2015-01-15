@@ -46,7 +46,11 @@ class Borg
   then: (fn) ->
     @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn) unless typeof fn is 'function'
     _Q.push =>
-      fn @next
+      if fn.length is 0 # sync
+        fn()
+        @next()
+      else # async
+        fn @next
     return
   finally: (fn) =>
     _Q.push fn # append final function as end of chain
