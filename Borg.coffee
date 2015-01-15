@@ -35,6 +35,12 @@ class Borg
     ]
   encrypt: _crypt 'en'
   decrypt: _crypt 'de'
+  checksum: (str, algorithm='sha256', encoding='hex') ->
+    crypto
+      .createHash(algorithm)
+      .update(str)
+      .digest(encoding)
+
 
   # async flow control
   _Q = []
