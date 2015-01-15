@@ -6,29 +6,29 @@ Logger = require './Logger'
 global.DEBUG = true
 { delay } = require './util'
 crypto = require 'crypto'
-secret_path = path.join process.cwd(), 'secret'
-try
-  secret = fs.readFileSync secret_path
-catch e
-  secret = false
 
 module.exports =
 class Borg
   constructor: (o) ->
     @cwd = o?.cwd or process.cwd()
     try
+      secret_path = path.join @cwd, 'secret'
+      @secret = fs.readFileSync secret_path
+    catch e
+      process.stderr.write "WARNING: File #{secret_path} missing or unreadable. @#{cmd}crypt() will not modify input.\n#{e}\n"
+      @secret = false
+    try
       networks_path = path.join @cwd, 'attributes', 'networks.coffee'
       @networks = require networks_path
     catch e
-      process.stderr.write "WARNING: File #{networks_path} missing or unreadable.\n"
+      process.stderr.write "WARNING: File #{networks_path} missing or unreadable. @networks will be empty.\n#{e}\n"
       @networks = {}
     @server = new Object
 
   _crypt = (cmd) -> (s) ->
-    if secret is false
-      process.stderr.write "WARNING: File #{secret_path} missing or not readable. @#{cmd}crypt() is disabled.\n"
+    if @secret is false
       return s
-    cipher = crypto["create#{if cmd is 'en' then 'C' else 'Dec'}ipher"] 'aes-256-cbc', secret
+    cipher = crypto["create#{if cmd is 'en' then 'C' else 'Dec'}ipher"] 'aes-256-cbc', @secret
     return Buffer.concat [
       cipher.update s
       cipher.final()
