@@ -15,7 +15,7 @@ class Borg
       secret_path = path.join @cwd, 'secret'
       @secret = fs.readFileSync secret_path
     catch e
-      process.stderr.write "WARNING: File #{secret_path} missing or unreadable. @#{cmd}crypt() will not modify input.\n#{e}\n"
+      process.stderr.write "WARNING: File #{secret_path} missing or unreadable. @encrypt()/@decrypt() will not modify input.\n#{e}\n"
       @secret = false
     try
       networks_path = path.join @cwd, 'attributes', 'networks.coffee'
