@@ -26,13 +26,20 @@ class Borg
     @server = new Object
 
   _crypt = (cmd) -> (s) ->
-    if @secret is false
-      return s
+    return s if @secret is false
+    if typeof s is 'string'
+      if cmd is 'en'
+        input = 'utf8'
+        output = 'base64'
+      else
+        input = 'base64'
+        output = 'utf8'
+    else
+      input = 'binary'
+      output = 'binary'
     cipher = crypto["create#{if cmd is 'en' then 'C' else 'Dec'}ipher"] 'aes-256-cbc', @secret
-    return Buffer.concat [
-      cipher.update s
-      cipher.final()
-    ]
+    r = cipher.update s, input, output
+    return r += cipher.final output
   encrypt: _crypt 'en'
   decrypt: _crypt 'de'
   checksum: (str, algorithm='sha256', encoding='hex') ->
