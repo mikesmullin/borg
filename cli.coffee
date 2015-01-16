@@ -14,6 +14,7 @@ testing, and deployment.
 Commands:
 
   init        create necessary files for a new project
+  install     add third-party dependency git submodules
   list        enumerate available hosts
   create      construct hosts in the cloud via provider apis
   assimilate  execute scripted commands via ssh on hosts
@@ -141,6 +142,7 @@ switch cmd = process.args[0]
     console.log "borg v#{pkg.version}\n"
 
   when 'init'
+    console.log "Initializing empty Borg project in #{process.cwd()}"
     child_process.exec '''
     cat << EOF > .gitignore
     node_modules/
@@ -156,10 +158,23 @@ switch cmd = process.args[0]
     git init
     ''',
     (error, stdout, stderr) ->
-      if error isnt null
-        console.log error
-      else
-        console.log "Initialized empty Borg project in #{process.cwd()}"
+      process.stderr.write(error+'\n') and process.exit 1 if error
+      process.stdout.write stdout
+      process.stderr.write stderr
+
+  when 'install'
+    repo = process.args[1]
+    name = path.basename repo, '.git'
+    if null is repo.match /\//
+      repo = 'borg-scripts/'+repo # assume borg-scripts/ if no repo specified
+    if null is repo.match /:/
+      repo = 'git@github.com:'+repo+'.git' # assume github if no host specified
+    cmd = "git submodule add -f#{if options.v then " -b "+options.v else ''} #{repo} scripts/vendor/#{name}"
+    console.log cmd
+    child_process.exec cmd, (error, stdout, stderr) ->
+      process.stderr.write(error+'\n') and process.exit 1 if error
+      process.stdout.write stdout
+      process.stderr.write stderr
 
   when 'list', 'create', 'assimilate', 'assemble', 'destroy'
     if cmd is 'assimilate'
