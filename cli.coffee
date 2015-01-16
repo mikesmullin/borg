@@ -1,5 +1,5 @@
 _ = require 'lodash'
-spawn = require('child_process').spawn
+child_process = require 'child_process'
 path = require 'path'
 fs = require 'fs'
 
@@ -172,7 +172,7 @@ switch cmd = process.args[0]
           if process.options.save
             borg.remember "/#{server.fqdn}", process.options.locals
           args.push "#{server.ssh.host}:#{server.ssh.port}"
-        spawn 'cssh', args, stdio: 'inherit'
+        child_process.spawn 'cssh', args, stdio: 'inherit'
     else
       process.stderr.write "\n0 existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
 
