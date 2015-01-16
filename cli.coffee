@@ -13,6 +13,7 @@ testing, and deployment.
 
 Commands:
 
+  init        create necessary files for a new project
   list        enumerate available hosts
   create      construct hosts in the cloud via provider apis
   assimilate  execute scripted commands via ssh on hosts
@@ -138,6 +139,27 @@ switch cmd = process.args[0]
   when '-V', '--version', 'version'
     pkg = require './package.json'
     console.log "borg v#{pkg.version}\n"
+
+  when 'init'
+    child_process.exec '''
+    cat << EOF > .gitignore
+    node_modules/
+    scripts/vendor/
+    !scripts/vendor/.gitkeep
+    /cli.coffee
+    /secret
+    EOF
+    mkdir -p attributes/ scripts/vendor/
+    touch README.md scripts/vendor/.gitkeep attributes/networks.coffee
+    echo {} > attributes/memory.json
+    openssl rand -base64 512 > secret
+    git init
+    ''',
+    (error, stdout, stderr) ->
+      if error isnt null
+        console.log error
+      else
+        console.log "Initialized empty Borg project in #{process.cwd()}"
 
   when 'list', 'create', 'assimilate', 'assemble', 'destroy'
     if cmd is 'assimilate'
