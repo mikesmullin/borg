@@ -310,7 +310,9 @@ class Borg
       else
         @die err
     finally
+      @then @log "entering #{p}..."
       (require p).apply @
+      @then @log "exiting #{p}..."
 
   # save instance details to disk for future reference
   remember: (xpath, value) ->
