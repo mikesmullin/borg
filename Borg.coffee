@@ -5,41 +5,104 @@ require 'sugar'
 Logger = require './Logger'
 global.DEBUG = true
 { delay } = require './util'
+crypto = require 'crypto'
 
 module.exports =
 class Borg
+  constructor: (o) ->
+    @cwd = o?.cwd or process.cwd()
+    try
+      secret_path = path.join @cwd, 'secret'
+      @secret = fs.readFileSync secret_path
+    catch e
+      process.stderr.write "WARNING: File #{secret_path} missing or unreadable. @encrypt()/@decrypt() will not modify input.\n#{e}\n"
+      @secret = false
+    try
+      networks_path = path.join @cwd, 'attributes', 'networks.coffee'
+      @networks = require networks_path
+    catch e
+      process.stderr.write "WARNING: File #{networks_path} missing or unreadable. @networks will be empty.\n#{e}\n"
+      @networks = {}
+    @server = new Object
+
+  _crypt = (cmd) -> (s) ->
+    return s if @secret is false
+    if typeof s is 'string'
+      if cmd is 'en'
+        input = 'utf8'
+        output = 'base64'
+      else
+        input = 'base64'
+        output = 'utf8'
+    else
+      input = 'binary'
+      output = 'binary'
+    cipher = crypto["create#{if cmd is 'en' then 'C' else 'Dec'}ipher"] 'aes-256-cbc', @secret
+    r = cipher.update s, input, output
+    return r += cipher.final output
+  encrypt: _crypt 'en'
+  decrypt: _crypt 'de'
+  checksum: (str, algorithm='sha256', encoding='hex') ->
+    crypto
+      .createHash(algorithm)
+      .update(str)
+      .digest(encoding)
+
+
+  # async flow control
+  _Q = []
+  next: (err) ->
+    if err
+      _Q.splice 0, _Q.length-1
+    _Q.shift()?.apply null, arguments
+    return
+  then: (fn) ->
+    @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn) unless typeof fn is 'function'
+    _Q.push =>
+      if fn.length is 0 # sync
+        fn()
+        @next()
+      else # async
+        fn @next
+    return
+  call: (fn, args...) -> (cb) ->
+    if Array.isArray fn
+      root = fn[0]
+      fn = fn[0][fn[1]]
+    else
+      root = null
+    last = args[args.length-1]
+    if typeof last is 'object' and 'err' of last and typeof last.err is 'function'
+      err_cb = args.pop().err
+    fn.apply root, args.concat (err) ->
+      if err_cb and err
+        err_cb err # intercept and handle error with custom callback
+        cb() # don't forward err
+      else
+        cb err # forward any errors
+  finally: (fn) ->
+    _Q.push fn # append final function as end of chain
+    @next() # ignite firecracker chain-reaction
+    return
+  inject_flow: (fn) -> (cb) =>
+    oldQ = _Q # backup
+    _Q = thisQ = [] # set new empty array
+    fn (warn) => # enqueue all, providing end() method
+      @log(warn)(->) if warn # errors passed to end() are considered non-fatal warnings
+      # if you meant for them to be fatal, you should call @die() instead of end()
+      thisQ.splice 0, thisQ.length-1 # skip any remaining functions
+    @finally => # kick-start
+      _Q = oldQ # restore backup
+      cb.apply arguments # resume chain, forwarding arguments
+    return
+
   # process
-  log: -> Logger.out.apply Logger, arguments
+  log: -> args = arguments; (cb) -> Logger.out.apply Logger, args; cb()
   die: (reason) ->
-    @log type: 'err', reason
+    Logger.out type: 'err', reason
     console.trace()
     process.exit 1
     return
-
-  constructor: (o) ->
-    @cwd = o?.cwd or process.cwd()
-    @networks = require path.join @cwd, 'attributes', 'networks'
-    @server = new Object
-
-  # async flow control
-  _Q: []
-  next: (err) => @_Q.splice 0, @_Q.length-1 if err; @_Q.shift()?.apply null, arguments
-  then: (fn, args...) ->
-    @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn)+' with args: '+JSON.stringify(args) unless typeof fn is 'function'
-    @_Q.push(=> args.push @next; fn.apply null, args); @
-  finally: (fn) => @_Q.push fn; @next()
-  sub: (fn, cb) =>
-    oldQ = @_Q
-    @_Q = []
-    fn (warn) =>
-      @log warn if warn # errors passed to end() are considered non-fatal warnings
-      # if you meant for them to be fatal, you shuold call @die() instead of end()
-      @_Q.splice 0, @_Q.length-1 # skip any remaining functions
-      @_Q.shift()?.apply null
-    @finally (err) =>
-      @die err if err
-      @_Q = oldQ
-      cb()
 
   # attributes
   networks: null
@@ -243,7 +306,7 @@ class Borg
   # scripts
   import: (paths...) ->
     p = path.join.apply null, paths
-    @log "importing #{p}..."
+    Logger.out "importing #{p}..."
     try
       stats = fs.statSync p
       if stats.isDirectory()
@@ -254,7 +317,9 @@ class Borg
       else
         @die err
     finally
+      @then @log "entering #{p}..."
       (require p).apply @
+      @then @log "exiting #{p}..."
 
   # save instance details to disk for future reference
   remember: (xpath, value) ->
@@ -389,6 +454,7 @@ class Borg
     locals.ssh.port ||= 22
     @create locals, =>
       @assimilate locals, cb
+        # TODO: also run checkup
 
 
   destroy: (locals, cb) ->
