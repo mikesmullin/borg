@@ -14,7 +14,8 @@ testing, and deployment.
 Commands:
 
   init        create necessary files for a new project
-  install     add third-party dependency git submodules
+  install     add third-party dependency Git submodules
+  update      update third-party dependency Git submodules
   list        enumerate available hosts
   create      construct hosts in the cloud via provider apis
   assimilate  execute scripted commands via ssh on hosts
@@ -28,6 +29,34 @@ Commands:
 
 """
 
+BORG_HELP_INIT = """
+Usage: borg init
+
+Creates files necessary for a new Borg project in the cwd.
+
+"""
+
+BORG_HELP_INSTALL = """
+Usage: borg install <repo>
+
+Installs third-party dependencies as Git submodules located
+under ./scripts/vendor/
+
+Options:
+
+  -v=         fetches a specific branch, tag, or git ref
+
+"""
+
+BORG_HELP_UPDATE = """
+Usage: borg update
+
+Updates third-party dependencies installed as Git submodules.
+Especially useful when a branch was specified with -v option
+when adding the submodule; update would bring submodule to
+the latest commit on that branch.
+
+"""
 
 BORG_HELP_TEST = """
 Usage: borg test <subcommand> <fqdn|regex>
@@ -176,6 +205,14 @@ switch cmd = process.args[0]
       process.stdout.write stdout
       process.stderr.write stderr
 
+  when 'update'
+    cmd = "git submodule update --init --remote"
+    console.log cmd
+    child_process.exec cmd, (error, stdout, stderr) ->
+      process.stderr.write(error+'\n') and process.exit 1 if error
+      process.stdout.write stdout
+      process.stderr.write stderr
+
   when 'list', 'create', 'assimilate', 'assemble', 'destroy'
     if cmd is 'assimilate'
       return console.log BORG_HELP_ASSIMILATE if process.args.length <= 1
@@ -237,6 +274,12 @@ switch cmd = process.args[0]
       console.log BORG_HELP
     else
       switch process.args[1]
+        when 'init'
+          console.log BORG_HELP_INIT
+        when 'install'
+          console.log BORG_HELP_INSTALL
+        when 'update'
+          console.log BORG_HELP_UPDATE
         when 'assimilate'
           console.log BORG_HELP_ASSIMILATE
         when 'login'
