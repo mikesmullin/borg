@@ -15,13 +15,13 @@ class Borg
       secret_path = path.join @cwd, 'secret'
       @secret = fs.readFileSync secret_path
     catch e
-      process.stderr.write "WARNING: File #{secret_path} missing or unreadable. @encrypt()/@decrypt() will not modify input.\n#{e}\n"
+      process.stderr.write "\u001b[1m\u001b[33mWARNING:\u001b[0m File `./#{path.relative @cwd, secret_path}` missing or unreadable. @encrypt()/@decrypt() will not modify input.\n\n"
       @secret = false
     try
       networks_path = path.join @cwd, 'attributes', 'networks.coffee'
       @networks = require networks_path
     catch e
-      process.stderr.write "WARNING: File #{networks_path} missing or unreadable. @networks will be empty.\n#{e}\n"
+      process.stderr.write "\u001b[1m\u001b[33mWARNING:\u001b[0m File `./#{path.relative @cwd, networks_path}` missing or unreadable. @networks will be empty.\n\n"
       @networks = {}
     @server = new Object
 

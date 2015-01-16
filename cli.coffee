@@ -128,8 +128,10 @@ if options.locals # allow users to pass CSON via --locals cli argument
   options.locals = eval (require 'coffee-script').compile options.locals, bare: true
 process.options = options
 
-Borg = require './Borg'
-borg = new Borg
+borg = ''
+init_borg = ->
+  Borg = require './Borg'
+  borg = new Borg
 
 return console.log BORG_HELP if process.args.length is 0
 switch cmd = process.args[0]
@@ -140,6 +142,7 @@ switch cmd = process.args[0]
   when 'list', 'create', 'assimilate', 'assemble', 'destroy'
     if cmd is 'assimilate'
       return console.log BORG_HELP_ASSIMILATE if process.args.length <= 1
+    init_borg()
     borg[cmd] fqdn: process.args[1], (err) ->
       if err
         process.stderr.write 'Error: '+err+"\n"
@@ -149,6 +152,7 @@ switch cmd = process.args[0]
   when 'login'
     return console.log BORG_HELP_LOGIN if process.args.length <= 1
     rx = new RegExp process.args[1], 'g'
+    init_borg()
     borg.flattenNetworkAttributes()
     servers = []
     borg.eachServer ({ server }) ->
@@ -174,6 +178,7 @@ switch cmd = process.args[0]
 
   when 'test'
     return console.log BORG_HELP_TEST if process.args.length <= 1
+    init_borg()
     switch process.args[1]
       when 'list', 'create', 'assimilate', 'assemble', 'checkup', 'destroy'
         (require './test')(borg)
@@ -182,6 +187,7 @@ switch cmd = process.args[0]
 
   when 'encrypt', 'decrypt'
     return console.log BORG_HELP_CRYPT if process.args.length <= 1
+    init_borg()
     for file in process.args.slice 1
       file_path = path.join process.cwd(), file
       console.log "#{cmd}ing: #{file_path}..."
