@@ -1,9 +1,18 @@
 _ = require 'lodash'
-spawn = require('child_process').spawn
+child_process = require 'child_process'
 path = require 'path'
 fs = require 'fs'
 
 global.USING_CLI = true
+
+BORG_DOCS_AD = """
+
+Advertisement:
+
+  Learn to Script Borg from the pros:
+  http://mikesmullin.github.io/borg-docs/
+
+"""
 
 BORG_HELP = """
 Usage: borg <command> [options] <host ...>
@@ -13,6 +22,9 @@ testing, and deployment.
 
 Commands:
 
+  init        create necessary files for a new project
+  install     add third-party dependency Git submodules
+  update      update third-party dependency Git submodules
   list        enumerate available hosts
   create      construct hosts in the cloud via provider apis
   assimilate  execute scripted commands via ssh on hosts
@@ -24,8 +36,38 @@ Commands:
   version     display currently installed version
   help        display more information about a command
 
+"""+BORG_DOCS_AD
+
+BORG_HELP_INIT = """
+Usage: borg init <directory>
+
+Creates a new directory by the given name in the current
+working directory, and places templates representing the
+files necessary for a new Borg project.
+
 """
 
+BORG_HELP_INSTALL = """
+Usage: borg install <repo>
+
+Installs third-party dependencies as Git submodules located
+under ./scripts/vendor/
+
+Options:
+
+  -v=         fetches a specific branch, tag, or git ref
+
+"""
+
+BORG_HELP_UPDATE = """
+Usage: borg update
+
+Updates third-party dependencies installed as Git submodules.
+Especially useful when a branch was specified with -v option
+when adding the submodule; update would bring submodule to
+the latest commit on that branch.
+
+"""
 
 BORG_HELP_TEST = """
 Usage: borg test <subcommand> <fqdn|regex>
@@ -69,7 +111,7 @@ CSON Format:
 
   CoffeeScript Object Notation is like JSON but better.
 
-"""
+"""+BORG_DOCS_AD
 
 BORG_HELP_LOGIN = """
 Usage: borg login [options] <fqdn|regex>
@@ -128,8 +170,10 @@ if options.locals # allow users to pass CSON via --locals cli argument
   options.locals = eval (require 'coffee-script').compile options.locals, bare: true
 process.options = options
 
-Borg = require './Borg'
-borg = new Borg
+borg = ''
+init_borg = ->
+  Borg = require './Borg'
+  borg = new Borg
 
 return console.log BORG_HELP if process.args.length is 0
 switch cmd = process.args[0]
@@ -137,9 +181,57 @@ switch cmd = process.args[0]
     pkg = require './package.json'
     console.log "borg v#{pkg.version}\n"
 
+  when 'init'
+    project_dir = path.join process.cwd(), process.args[1]
+    console.log "Initializing empty Borg project in #{project_dir}"
+    child_process.exec """
+    mkdir -p #{project_dir}
+    cd #{project_dir}
+    cat << EOF > .gitignore
+    node_modules/
+    scripts/vendor/
+    !scripts/vendor/.gitkeep
+    /cli.coffee
+    /secret
+    EOF
+    mkdir -p attributes/ scripts/servers/ scripts/vendor/
+    touch README.md scripts/servers/.gitkeep scripts/vendor/.gitkeep attributes/networks.coffee
+    echo {} > attributes/memory.json
+    openssl rand -base64 512 > secret
+    git init
+    borg install resources
+    """,
+    (error, stdout, stderr) ->
+      process.stderr.write(error+'\n') and process.exit 1 if error
+      process.stdout.write stdout
+      process.stderr.write stderr
+
+  when 'install'
+    repo = process.args[1]
+    name = path.basename repo, '.git'
+    if null is repo.match /\//
+      repo = 'borg-scripts/'+repo # assume borg-scripts/ if no repo specified
+    if null is repo.match /:/
+      repo = 'git@github.com:'+repo+'.git' # assume github if no host specified
+    cmd = "git submodule add -f#{if options.v then " -b "+options.v else ''} #{repo} scripts/vendor/#{name}"
+    console.log cmd
+    child_process.exec cmd, (error, stdout, stderr) ->
+      process.stderr.write(error+'\n') and process.exit 1 if error
+      process.stdout.write stdout
+      process.stderr.write stderr
+
+  when 'update'
+    cmd = "git submodule update --init --remote"
+    console.log cmd
+    child_process.exec cmd, (error, stdout, stderr) ->
+      process.stderr.write(error+'\n') and process.exit 1 if error
+      process.stdout.write stdout
+      process.stderr.write stderr
+
   when 'list', 'create', 'assimilate', 'assemble', 'destroy'
     if cmd is 'assimilate'
       return console.log BORG_HELP_ASSIMILATE if process.args.length <= 1
+    init_borg()
     borg[cmd] fqdn: process.args[1], (err) ->
       if err
         process.stderr.write 'Error: '+err+"\n"
@@ -149,6 +241,7 @@ switch cmd = process.args[0]
   when 'login'
     return console.log BORG_HELP_LOGIN if process.args.length <= 1
     rx = new RegExp process.args[1], 'g'
+    init_borg()
     borg.flattenNetworkAttributes()
     servers = []
     borg.eachServer ({ server }) ->
@@ -168,12 +261,13 @@ switch cmd = process.args[0]
           if process.options.save
             borg.remember "/#{server.fqdn}", process.options.locals
           args.push "#{server.ssh.host}:#{server.ssh.port}"
-        spawn 'cssh', args, stdio: 'inherit'
+        child_process.spawn 'cssh', args, stdio: 'inherit'
     else
       process.stderr.write "\n0 existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
 
   when 'test'
     return console.log BORG_HELP_TEST if process.args.length <= 1
+    init_borg()
     switch process.args[1]
       when 'list', 'create', 'assimilate', 'assemble', 'checkup', 'destroy'
         (require './test')(borg)
@@ -182,6 +276,7 @@ switch cmd = process.args[0]
 
   when 'encrypt', 'decrypt'
     return console.log BORG_HELP_CRYPT if process.args.length <= 1
+    init_borg()
     for file in process.args.slice 1
       file_path = path.join process.cwd(), file
       console.log "#{cmd}ing: #{file_path}..."
@@ -194,6 +289,12 @@ switch cmd = process.args[0]
       console.log BORG_HELP
     else
       switch process.args[1]
+        when 'init'
+          console.log BORG_HELP_INIT
+        when 'install'
+          console.log BORG_HELP_INSTALL
+        when 'update'
+          console.log BORG_HELP_UPDATE
         when 'assimilate'
           console.log BORG_HELP_ASSIMILATE
         when 'login'

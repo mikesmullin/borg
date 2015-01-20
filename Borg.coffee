@@ -15,16 +15,25 @@ class Borg
       secret_path = path.join @cwd, 'secret'
       @secret = fs.readFileSync secret_path
     catch e
-      process.stderr.write "WARNING: File #{secret_path} missing or unreadable. @encrypt()/@decrypt() will not modify input.\n#{e}\n"
+      process.stderr.write "\u001b[1m\u001b[33mWARNING:\u001b[0m File `./#{path.relative @cwd, secret_path}` missing or unreadable. @encrypt()/@decrypt() will not modify input.\n\n"
       @secret = false
     try
       networks_path = path.join @cwd, 'attributes', 'networks.coffee'
       @networks = require networks_path
     catch e
-      process.stderr.write "WARNING: File #{networks_path} missing or unreadable. @networks will be empty.\n#{e}\n"
+      process.stderr.write "\u001b[1m\u001b[33mWARNING:\u001b[0m File `./#{path.relative @cwd, networks_path}` missing or unreadable. @networks will be empty.\n\n"
       @networks = {}
     @server = new Object
 
+  # process
+  log: -> args = arguments; (cb) -> Logger.out.apply Logger, args; cb()
+  die = (reason) -> # blocking
+    Logger.out type: 'err', reason
+    console.trace()
+    process.exit 1
+  die: (reason) -> (cb) -> die reason # asynchronous
+
+  # cryptography
   _crypt = (cmd) -> (s) ->
     return s if @secret is false
     if typeof s is 'string'
@@ -57,7 +66,7 @@ class Borg
     _Q.shift()?.apply null, arguments
     return
   then: (fn) ->
-    @die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn) unless typeof fn is 'function'
+    die 'You passed a non-function value to @then. It was: '+JSON.stringify(fn) unless typeof fn is 'function'
     _Q.push =>
       if fn.length is 0 # sync
         fn()
@@ -94,14 +103,6 @@ class Borg
     @finally => # kick-start
       _Q = oldQ # restore backup
       cb.apply arguments # resume chain, forwarding arguments
-    return
-
-  # process
-  log: -> args = arguments; (cb) -> Logger.out.apply Logger, args; cb()
-  die: (reason) ->
-    Logger.out type: 'err', reason
-    console.trace()
-    process.exit 1
     return
 
   # attributes
@@ -265,16 +266,16 @@ class Borg
     # parse fqdn into name parts
     if locals.fqdn
       unless @parseFQDN locals
-        @die "unrecognized fqdn format: #{locals.fqdn}. should be {datacenter}-{env}-{type}{instance}-{subproject}{tld}"
+        die "unrecognized fqdn format: #{locals.fqdn}. should be {datacenter}-{env}-{type}{instance}-{subproject}{tld}"
     else unless locals.datacenter and locals.env and locals.type and locals.instance and locals.tld
-      @die 'missing required locals.fqdn or all of locals: datacenter, env, type, instance, tld. cannot continue.'
+      die 'missing required locals.fqdn or all of locals: datacenter, env, type, instance, tld. cannot continue.'
 
     # server object begins with network attributes from matching fqdn
     { found, server, possible_group } = @flattenNetworkAttributes locals
     if found
       return cb server
     else
-      @die "Unable to locate server within network attributes." unless possible_group # TODO: could define an automatic group name, but meh.
+      die "Unable to locate server within network attributes." unless possible_group # TODO: could define an automatic group name, but meh.
       console.log """
       \nWARNING! Instance "#{locals.type}#{locals.instance}" is undefined in network.coffee and memory.json.
       A NEW instance will be appended to memory.json based upon attributes
@@ -315,7 +316,7 @@ class Borg
       if err?.code is 'ENOENT'
         @importCwd = path.dirname p
       else
-        @die err
+        die err
     finally
       @then @log "entering #{p}..."
       (require p).apply @
