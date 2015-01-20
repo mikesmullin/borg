@@ -213,7 +213,10 @@ switch cmd = process.args[0]
       repo = 'borg-scripts/'+repo # assume borg-scripts/ if no repo specified
     if null is repo.match /:/
       repo = 'git@github.com:'+repo+'.git' # assume github if no host specified
-    cmd = "git submodule add -f#{if options.v then " -b "+options.v else ''} #{repo} scripts/vendor/#{name}"
+    cmd = """
+    git submodule add -f#{if options.v then " -b "+options.v else ''} #{repo} scripts/vendor/#{name}
+    cd scripts/vendor/#{name} && npm install
+    """
     console.log cmd
     child_process.exec cmd, (error, stdout, stderr) ->
       process.stderr.write(error+'\n') and process.exit 1 if error
@@ -221,7 +224,12 @@ switch cmd = process.args[0]
       process.stderr.write stderr
 
   when 'update'
-    cmd = "git submodule update --init --remote"
+    cmd = """
+    git submodule update --init --remote
+    """
+    submodules = fs.readdirSync path.join process.cwd(), 'scripts', 'vendor'
+    for submodule in submodules when not submodule.match /^\./
+      cmd += "\ncd scripts/vendor/#{submodule} && npm update && cd -"
     console.log cmd
     child_process.exec cmd, (error, stdout, stderr) ->
       process.stderr.write(error+'\n') and process.exit 1 if error
