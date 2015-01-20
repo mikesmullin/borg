@@ -283,6 +283,7 @@ class Borg
       """
       @cliConfirm "Proceed?", =>
         locals.group = possible_group
+        @remember "/#{locals.fqdn}/group", locals.group
         @_defineInstance locals
         { server } = @flattenNetworkAttributes locals # again, now that our server is defined
         return cb server
