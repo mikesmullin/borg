@@ -5,6 +5,15 @@ fs = require 'fs'
 
 global.USING_CLI = true
 
+BORG_DOCS_AD = """
+
+Advertisement:
+
+  Learn to Script Borg from the pros:
+  http://mikesmullin.github.io/borg-docs/
+
+"""
+
 BORG_HELP = """
 Usage: borg <command> [options] <host ...>
 
@@ -27,12 +36,14 @@ Commands:
   version     display currently installed version
   help        display more information about a command
 
-"""
+"""+BORG_DOCS_AD
 
 BORG_HELP_INIT = """
-Usage: borg init
+Usage: borg init <directory>
 
-Creates files necessary for a new Borg project in the cwd.
+Creates a new directory by the given name in the current
+working directory, and places templates representing the
+files necessary for a new Borg project.
 
 """
 
@@ -100,7 +111,7 @@ CSON Format:
 
   CoffeeScript Object Notation is like JSON but better.
 
-"""
+"""+BORG_DOCS_AD
 
 BORG_HELP_LOGIN = """
 Usage: borg login [options] <fqdn|regex>
@@ -171,8 +182,11 @@ switch cmd = process.args[0]
     console.log "borg v#{pkg.version}\n"
 
   when 'init'
-    console.log "Initializing empty Borg project in #{process.cwd()}"
-    child_process.exec '''
+    project_dir = path.join process.cwd(), process.args[1]
+    console.log "Initializing empty Borg project in #{project_dir}"
+    child_process.exec """
+    mkdir -p #{project_dir}
+    cd #{project_dir}
     cat << EOF > .gitignore
     node_modules/
     scripts/vendor/
@@ -180,12 +194,13 @@ switch cmd = process.args[0]
     /cli.coffee
     /secret
     EOF
-    mkdir -p attributes/ scripts/vendor/
-    touch README.md scripts/vendor/.gitkeep attributes/networks.coffee
+    mkdir -p attributes/ scripts/servers/ scripts/vendor/
+    touch README.md scripts/servers/.gitkeep scripts/vendor/.gitkeep attributes/networks.coffee
     echo {} > attributes/memory.json
     openssl rand -base64 512 > secret
     git init
-    ''',
+    borg install resources
+    """,
     (error, stdout, stderr) ->
       process.stderr.write(error+'\n') and process.exit 1 if error
       process.stdout.write stdout
