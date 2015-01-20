@@ -17,7 +17,8 @@ else
   # NOTICE: places a temporary bootstrap .coffee file in the cwd.
   #         this makes debugging easier.
   TMP=.cli.coffee
-  test -f $TMP || echo "require 'borg/cli'" > $TMP
+  DIR=$( dirname $( readlink -f "${BASH_SOURCE[0]}" ) )
+  test -f $TMP || echo "require '$DIR/../cli'" > $TMP
   coffee $TMP "$@"
   rm $TMP
 fi
