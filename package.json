@@ -1,10 +1,12 @@
 {
   "name": "borg",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Automated provisioning and deployment with Node.JS.",
   "bin": "bin/borg",
   "main": "Borg.coffee",
+  "preferGlobal": true,
   "scripts": {
+    "preinstall": "npm install coffee-script -g",
     "test": "mocha --timeout 10000 --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w test/unit/*.coffee",
     "integration-test": "cd test/integration && mocha --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w *.coffee",
     "start": "coffee cli.coffee"
