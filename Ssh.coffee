@@ -4,10 +4,10 @@ DEBUG = false
 
 module.exports = class Ssh
   constructor: (o, cb) ->
-    return cb 'host is required' unless @host = o.host
-    return cb 'pass or key is required' unless (@pass = o.pass) or (@key = o.key)
-    return cb 'user is required' unless @user = o.user
-    return cb 'port is required' unless @port = o.port
+    return cb 'ssh: host is required' unless @host = o.host
+    return cb 'ssh: pass: or key: is required' unless (@pass = o.pass) or (@key = o.key)
+    return cb 'ssh: user: is required' unless @user = o.user
+    return cb 'ssh: port: is required' unless @port = o.port
     @connect cb
     return
 

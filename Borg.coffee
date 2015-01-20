@@ -261,7 +261,7 @@ class Borg
     scrubbed_locals = _.cloneDeep locals
     scrubbed_locals.ssh.pass = 'SCRUBBED' if scrubbed_locals.ssh?.pass
     scrubbed_locals.ssh.key = 'SCRUBBED' if scrubbed_locals.ssh?.key
-    console.log "Interpreted locals:\n"+JSON.stringify scrubbed_locals
+    #console.log "Interpreted locals:\n"+JSON.stringify scrubbed_locals
 
     # parse fqdn into name parts
     if locals.fqdn
@@ -283,6 +283,7 @@ class Borg
       """
       @cliConfirm "Proceed?", =>
         locals.group = possible_group
+        @remember "/#{locals.fqdn}/group", locals.group
         @_defineInstance locals
         { server } = @flattenNetworkAttributes locals # again, now that our server is defined
         return cb server
@@ -411,7 +412,7 @@ class Borg
   assimilate: (locals, cb) ->
     # load server attributes for named host
     @getServerObject locals, (@server) =>
-      console.log "Server attributes before scripts:\n"+ JSON.stringify server, null, 2
+      #console.log "@server object attributes before scripts:\n"+ JSON.stringify server, null, 2
 
       # the most basic resources come from a vendor repository
       @import @cwd, 'scripts', 'vendor', 'resources'
@@ -423,26 +424,38 @@ class Borg
       # include scripts attributes for matches in scripts/servers/*.coffee
       scripts = fs.readdirSync path.join @cwd, 'scripts', 'servers'
       for script in scripts when script isnt 'blank.coffee' and null isnt script.match /\.coffee$/
-        if true is (require path.join @cwd, 'scripts', 'servers', script).target.apply @
+        script_path = path.join @cwd, 'scripts', 'servers', script
+        o = require script_path
+        die "The `target: ->` callback function is missing from #{script_path}. Cannot continue." unless typeof o.target is 'function'
+        if o.target.apply @
           @server.scripts.push path.join 'scripts', 'servers', script
       unless @server.scripts.length
-        @server.scripts.push path.join 'scripts', 'servers', 'blank'
+        blank_path = path.join 'scripts', 'servers', 'blank'
+        try
+          fs.statSync blank_path
+          @server.scripts.push blank_path
+        catch e
+          # do nothing
 
       for script in @server.scripts
-        (require path.join @cwd, script).assimilate.apply @
+        script_path = path.join @cwd, script
+        o = require script_path
+        die "The `assimilate: ->` callback function is missing from #{script_path}. Cannot continue." unless typeof o.assimilate is 'function'
+        o.assimilate.apply @
 
-      console.log "Server attributes after scripts:\n"+ JSON.stringify @server, null, 2
+      console.log "@server object attributes after scripts:\n"+ JSON.stringify @server, null, 2
 
       # connect via ssh
       Ssh = require './Ssh'
       @ssh = new Ssh @server.ssh, (err) =>
-        return cb err if err
+        die err if err
         # finish and execute chain
         @finally (err) =>
-          return cb err if err
+          die err if err
           @ssh.close()
           delay 100, =>
-            console.log "Assimilated #{@server.fqdn or @server.ssh.host}."
+            Logger.out type: 'info', "Assimilation complete."
+            console.log "#{@server.ssh.host} #{@server.fqdn}\n"
             cb null
 
 
