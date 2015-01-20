@@ -190,7 +190,7 @@ switch cmd = process.args[0]
     cat << EOF > .gitignore
     node_modules/
     scripts/vendor/
-    !scripts/vendor/.gitkeep
+    !.gitkeep
     /cli.coffee
     /secret
     EOF
