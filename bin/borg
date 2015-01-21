@@ -14,11 +14,19 @@ if [[ $1 == 'debug' ]]; then
   #         breakpoint _you_ set, if any. in order to see that you have to 'Step over' once.
   node-inspector & coffee --nodejs --debug-brk $*
 else
-  # NOTICE: places a temporary bootstrap .coffee file in the cwd.
-  #         this makes debugging easier.
+  # NOTICE: places a temporary bootstrap .cli.coffee file in the cwd.
+  #         we do this so that coffee is executed relative to the process.cwd of the project root,
+  #         which makes debugging nicer since everything appears to be relative from project root.
+  #         we could have done it in pure Bash but relying on node keeps it more OS agnostic.
   TMP=.cli.coffee
-  DIR=$( dirname $( readlink -f "${BASH_SOURCE[0]}" ) )
-  test -f $TMP || echo "require '$DIR/../cli'" > $TMP
+  if [ ! -f $TMP ]; then
+    cat << EOF | coffee -s "${BASH_SOURCE[0]}" > $TMP
+    fs = require 'fs'
+    path = require 'path'
+    file_path = fs.realpathSync path.join path.dirname(process.argv[3]), path.dirname(fs.readlinkSync process.argv[3]), '..', 'src', 'cli.coffee'
+    console.log "require '#{file_path}'"
+EOF
+  fi
   coffee $TMP "$@"
-  rm $TMP
+  test -f $TMP && rm $TMP
 fi

@@ -1,10 +1,10 @@
 path = require 'path'
 fs = require 'fs'
-_ = require 'lodash'
+global._ = require 'lodash'
 require 'sugar'
-Logger = require './Logger'
+Logger = require './logger'
 global.DEBUG = true
-{ delay } = require './util'
+delay = (s,f) -> setTimeout f, s
 crypto = require 'crypto'
 
 module.exports =
@@ -115,6 +115,54 @@ class Borg
     instance ||= '01'
     subproject ||= @server.subproject ||= ''
     "#{datacenter or @server.datacenter}-#{env or @server.env}-#{type}#{instance}#{subproject && '-'+subproject}.#{tld or @server.tld}"
+
+  find_server: ({ datacenter, env, type, instance, subproject, tld, required }) =>
+    locals =
+      datacenter: datacenter or @server.datacenter
+      env: env or @server.env
+      type: type
+      subproject: subproject ||= @server.subproject ||= ''
+      tld: tld or @server.tld
+    _die = (s) ->
+      die "@find_server(): no #{s} found matching "+JSON.stringify locals unless required is false
+    locals.group = @_lookupGroupName locals
+    unless locals.group and _group = @networks.datacenters[locals.datacenter].groups[locals.group]
+      return _die 'group'
+    else
+      unless type
+        return _group.servers
+      else
+        unless _type = _group.servers[locals.type]
+          return _die 'type'
+        else
+          unless instance
+            return _type.instances
+          else
+            unless _instance = _type.instances[locals.instance]
+              return _die 'instance'
+            else
+              return _instance
+
+  map_servers: ({ datacenters, envs, types, instances, subprojects, tlds, required }, map_cb) =>
+    # TODO: in the future i plan to implement a crazy cross-join kind of feature
+    # where you can list multiple of each param and it will join all possible combinations
+    # and create a unique list of matching servers
+    # and then map the values from all of them
+    # but for now i only need to walk `type`
+    split = (o) -> switch typeof o
+      when 'string' then o.split /[, ]+/
+    results = []
+    for type in split types
+      server = @find_server
+        datacenter: datacenters
+        env: envs
+        type: type
+        instance: instances  # TODO: support a list like '01 03 04'
+        subproject: subprojects
+        tlds: tlds
+        required: required
+      results = results.concat _.map server, map_cb
+    return results
 
   eachServer: (each_cb) ->
     for datacenter, v of @networks.datacenters
@@ -446,7 +494,7 @@ class Borg
       console.log "@server object attributes after scripts:\n"+ JSON.stringify @server, null, 2
 
       # connect via ssh
-      Ssh = require './Ssh'
+      Ssh = require './ssh'
       @ssh = new Ssh @server.ssh, (err) =>
         die err if err
         # finish and execute chain
