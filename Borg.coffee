@@ -1,6 +1,6 @@
 path = require 'path'
 fs = require 'fs'
-_ = require 'lodash'
+global._ = require 'lodash'
 require 'sugar'
 Logger = require './Logger'
 global.DEBUG = true
