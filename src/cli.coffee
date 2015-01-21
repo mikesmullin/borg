@@ -172,7 +172,7 @@ process.options = options
 
 borg = ''
 init_borg = ->
-  Borg = require './Borg'
+  Borg = require './index'
   borg = new Borg
 
 return console.log BORG_HELP if process.args.length is 0

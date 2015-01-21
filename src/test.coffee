@@ -2,8 +2,7 @@ process.stdin.setEncoding 'utf8'
 require 'sugar'
 _     = require 'lodash'
 path  = require 'path'
-async = require 'async2'
-{ delay } = require '../util'
+delay = (s,f) -> setTimeout f, s
 
 module.exports = (borg) ->
   cloud_provider = 'aws' # hard-coded for now
@@ -216,7 +215,7 @@ module.exports = (borg) ->
 #
 #    when 'assimilate'
 #      attrs = get_instance_attrs process.argv[4]
-#      Borg = require './Borg'
+#      Borg = require './index'
 #      target = "#{boxes[attrs.box].user}:#{boxes[attrs.box].pass}@localhost:22"
 #      options = role: attrs._name
 #      console.log JSON.stringify target: target, options: options

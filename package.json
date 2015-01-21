@@ -2,27 +2,21 @@
   "name": "borg",
   "version": "0.0.7",
   "description": "Automated provisioning and deployment with Node.JS.",
+  "main": "src/index.coffee",
   "bin": "bin/borg",
-  "main": "Borg.coffee",
   "preferGlobal": true,
   "scripts": {
-    "preinstall": "npm install coffee-script -g",
-    "test": "mocha --timeout 10000 --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w test/unit/*.coffee",
-    "integration-test": "cd test/integration && mocha --reporter spec --bail --ui bdd --colors --compilers coffee:coffee-script -w *.coffee",
-    "start": "coffee cli.coffee"
+    "preinstall": "npm install coffee-script node-inspector -g"
   },
   "repository": "https://github.com/mikesmullin/borg",
   "author": "Mike Smullin <mike@smullindesign.com>",
   "license": "GPLv2",
   "devDependencies": {
-    "chai": "~1.6.0",
-    "coffee-script": "~1.6.2",
-    "mocha": "~1.9.0"
+    "coffee-script": "*"
   },
   "dependencies": {
-    "ssh2": "~0.2.5",
-    "async2": "~0.1.7",
-    "lodash": "~2.4.1",
-    "sugar": "~1.4.1"
+    "ssh2": "*",
+    "lodash": "*",
+    "sugar": "*"
   }
 }

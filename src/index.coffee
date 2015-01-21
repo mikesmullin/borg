@@ -2,9 +2,9 @@ path = require 'path'
 fs = require 'fs'
 global._ = require 'lodash'
 require 'sugar'
-Logger = require './Logger'
+Logger = require './logger'
 global.DEBUG = true
-{ delay } = require './util'
+delay = (s,f) -> setTimeout f, s
 crypto = require 'crypto'
 
 module.exports =
@@ -494,7 +494,7 @@ class Borg
       console.log "@server object attributes after scripts:\n"+ JSON.stringify @server, null, 2
 
       # connect via ssh
-      Ssh = require './Ssh'
+      Ssh = require './ssh'
       @ssh = new Ssh @server.ssh, (err) =>
         die err if err
         # finish and execute chain
