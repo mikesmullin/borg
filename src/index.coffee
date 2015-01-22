@@ -375,8 +375,11 @@ class Borg
   remember: (xpath, value) ->
     # load
     memory_file = path.join process.cwd(), 'attributes', 'memory.json'
-    delete require.cache[require.resolve memory_file] # invalidate cache
-    memory = require memory_file
+    try
+      delete require.cache[require.resolve memory_file] # invalidate cache
+      memory = require memory_file
+    catch e
+      # ignore errors
     # evaluate path
     pointer = memory
     return pointer if xpath is '/' and value is undefined

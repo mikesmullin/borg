@@ -69,34 +69,24 @@ the latest commit on that branch.
 
 """
 
-BORG_HELP_TEST = """
-Usage: borg test <subcommand> <fqdn|regex>
+BORG_HELP_LIST = """
+Usage: borg list
 
-Performs testing version of otherwise normal operations,
-across network-defined FQDNs matching the provided regular
-expression; aiding in development and integrity validation.
+Displays a list of all hosts found in `networks.coffee` and
+`memory.json` for the current project.
 
-Subcommands:
+"""
 
-  list        enumerate available test hosts
-  create      construct new test hosts
-  assimilate  execute scripts on existing test hosts
-  checkup     execute test suite against existing hosts
-  assemble    alias for create + assimilate + checkup
-  destroy     terminate existing test hosts
+BORG_HELP_CREATE = """
+Usage: borg create <fqdn>
 
-FQDN RegEx:
-
-  Double-quoted, escaped string. Omit delimiters.
-
-Other notes:
-
-  Hosts created by this command will have a "test-" FQDN prefix.
+Tells cloud provider to create a new virtual machine for
+the server matching the given network-defined FQDN.
 
 """
 
 BORG_HELP_ASSIMILATE = """
-Usage: borg assimilate [options] fqdn
+Usage: borg assimilate [options] <fqdn>
 
 Executes shell commands over SSH for the purpose of
 installing and configuring services on a remote machine
@@ -112,6 +102,22 @@ CSON Format:
   CoffeeScript Object Notation is like JSON but better.
 
 """+BORG_DOCS_AD
+
+BORG_HELP_ASSEMBLE = """
+Usage: borg assemble <fqdn>
+
+Executes `borg create` and `borg assemble` for the server
+matching the given network-defined FQDN.
+
+"""
+
+BORG_HELP_DESTROY = """
+Usage: borg destroy <fqdn>
+
+Tells cloud provider to terminate the virtual machine
+matching the given network-defined FQDN.
+
+"""
 
 BORG_HELP_LOGIN = """
 Usage: borg login [options] <fqdn|regex>
@@ -150,8 +156,34 @@ decrypted when required for upload to remote hosts.
 
 """
 
+BORG_HELP_TEST = """
+Usage: borg test <subcommand> <fqdn|regex>
+
+Performs testing version of otherwise normal operations,
+across network-defined FQDNs matching the provided regular
+expression; aiding in development and integrity validation.
+
+Subcommands:
+
+  list        enumerate available test hosts
+  create      construct new test hosts
+  assimilate  execute scripts on existing test hosts
+  assemble    alias for create + assimilate + checkup
+  checkup     execute test suite against existing hosts
+  destroy     terminate existing test hosts
+
+FQDN RegEx:
+
+  Double-quoted, escaped string. Omit delimiters.
+
+Other notes:
+
+  Hosts created by this command will have a "test-" FQDN prefix.
+
+"""
+
 BORG_HELP_NONE = "Sorry, no help for that, yet."
-INVALID = "Invalid command.\n\n"
+INVALID = "Invalid command. Type `borg help` for help.\n"
 
 OPTION = /^--?(\w+)\s*=?\s*(.*)$/
 argv = []; options = {}; args = process.argv.slice 2
@@ -175,10 +207,19 @@ init_borg = ->
   Borg = require './index'
   borg = new Borg
 
+delegate_borg = (cmd) ->
+  init_borg()
+  borg[cmd] fqdn: process.args[1], (err) ->
+    if err
+      process.stderr.write 'Error: '+err+"\n"
+      console.trace()
+      process.exit 1
+
+
 return console.log BORG_HELP if process.args.length is 0
 switch cmd = process.args[0]
   when '-V', '--version', 'version'
-    pkg = require './package.json'
+    pkg = require path.join __dirname, '..', 'package.json'
     console.log "borg v#{pkg.version}\n"
 
   when 'init'
@@ -207,6 +248,7 @@ switch cmd = process.args[0]
       process.stderr.write stderr
 
   when 'install'
+    return console.log BORG_HELP_INSTALL if process.args.length <= 1
     repo = process.args[1]
     name = path.basename repo, '.git'
     if null is repo.match /\//
@@ -236,15 +278,24 @@ switch cmd = process.args[0]
       process.stdout.write stdout
       process.stderr.write stderr
 
-  when 'list', 'create', 'assimilate', 'assemble', 'destroy'
-    if cmd is 'assimilate'
-      return console.log BORG_HELP_ASSIMILATE if process.args.length <= 1
-    init_borg()
-    borg[cmd] fqdn: process.args[1], (err) ->
-      if err
-        process.stderr.write 'Error: '+err+"\n"
-        console.trace()
-        process.exit 1
+  when 'list'
+    delegate_borg cmd
+
+  when 'create'
+    return console.log BORG_HELP_CREATE if process.args.length <= 1
+    delegate_borg cmd
+
+  when 'assimilate'
+    return console.log BORG_HELP_ASSIMILATE if process.args.length <= 1
+    delegate_borg cmd
+
+  when 'assemble'
+    return console.log BORG_HELP_ASSEMBLE if process.args.length <= 1
+    delegate_borg cmd
+
+  when 'destroy'
+    return console.log BORG_HELP_DESTROY if process.args.length <= 1
+    delegate_borg cmd
 
   when 'login'
     return console.log BORG_HELP_LOGIN if process.args.length <= 1
@@ -303,8 +354,16 @@ switch cmd = process.args[0]
           console.log BORG_HELP_INSTALL
         when 'update'
           console.log BORG_HELP_UPDATE
+        when 'list'
+          console.log BORG_HELP_LIST
+        when 'create'
+          console.log BORG_HELP_CREATE
         when 'assimilate'
           console.log BORG_HELP_ASSIMILATE
+        when 'assemble'
+          console.log BORG_HELP_ASSEMBLE
+        when 'destroy'
+          console.log BORG_HELP_DESTROY
         when 'login'
           console.log BORG_HELP_LOGIN
         when 'test'
@@ -312,13 +371,17 @@ switch cmd = process.args[0]
             console.log BORG_HELP_TEST
           else
             switch process.args[2]
-              when 'list', 'create', 'assimilate', 'checkup', 'destroy'
+              when 'list', 'create', 'assimilate', 'assemble', 'checkup', 'destroy'
                 console.log BORG_HELP_NONE
               else
-                console.log INVALID+BORG_HELP_TEST
-        when 'encrypt'
+                console.log INVALID
+        when 'encrypt', 'decrypt'
           console.log BORG_HELP_CRYPT
+        when 'version'
+          console.log "Really?"
+        when 'help'
+          console.log "Give me a break!"
         else
-          console.log INVALID+BORG_HELP_TEST
+          console.log INVALID
   else
-    console.log INVALID+BORG_HELP
+    console.log INVALID
