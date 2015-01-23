@@ -2,7 +2,7 @@ path = require 'path'
 fs = require 'fs'
 global._ = require 'lodash'
 require 'sugar'
-Logger = require './logger'
+{ Logger } = require './logger'
 global.DEBUG = true
 delay = (s,f) -> setTimeout f, s
 crypto = require 'crypto'

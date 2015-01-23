@@ -1,5 +1,5 @@
 Ssh2 = require 'ssh2'
-Logger = require './logger'
+{ Logger } = require './logger'
 DEBUG = false
 
 module.exports = class Ssh
