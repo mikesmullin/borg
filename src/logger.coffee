@@ -1,4 +1,3 @@
-module.exports =
 class Logger
   @started: new Date
   @out: ->
@@ -63,3 +62,5 @@ class Color
   @bright_magenta: '\u001b[1m\u001b[35m'
   @bright_cyan:    '\u001b[1m\u001b[36m'
   @bright_white:   '\u001b[1m\u001b[37m'
+
+module.exports = Logger: Logger, RainbowIndex: RainbowIndex, Color: Color

@@ -2,6 +2,7 @@ _ = require 'lodash'
 child_process = require 'child_process'
 path = require 'path'
 fs = require 'fs'
+{ Color } = require './logger'
 
 global.USING_CLI = true
 
@@ -48,7 +49,7 @@ files necessary for a new Borg project.
 """
 
 BORG_HELP_INSTALL = """
-Usage: borg install <repo>
+Usage: borg install|uninstall <repo>
 
 Installs third-party dependencies as Git submodules located
 under ./scripts/vendor/
@@ -215,6 +216,23 @@ delegate_borg = (cmd) ->
       console.trace()
       process.exit 1
 
+log = (s) -> (cb) ->
+  process.stdout.write "#{s}\n"
+  cb()
+
+execute = (args, o) -> (cb) ->
+  process.stdout.write "#{Color.reset}#{Color.bright_green}./#{path.relative process.cwd(), o?.cwd or process.cwd()}>#{Color.reset} #{Color.cyan}#{args}#{Color.reset}\n"
+  args = args.split ' '
+  cmd = args.shift()
+  o ||= {}
+  #o.stdio = 'inherit'
+  child = child_process.spawn cmd, args, o
+  child.stdout.on 'data', (data) ->
+    process.stdout.write "#{Color.magenta}#{data}#{Color.reset}"
+  child.stderr.on 'data', (data) ->
+    process.stderr.write "#{Color.bright_red}#{data}#{Color.reset}"
+  child.on 'close', (code) ->
+    cb()
 
 return console.log BORG_HELP if process.args.length is 0
 switch cmd = process.args[0]
@@ -225,58 +243,75 @@ switch cmd = process.args[0]
   when 'init'
     project_dir = path.join process.cwd(), process.args[1]
     console.log "Initializing empty Borg project in #{project_dir}"
-    child_process.exec """
-    mkdir -p #{project_dir}
-    cd #{project_dir}
-    cat << EOF > .gitignore
-    node_modules/
-    scripts/vendor/
-    !.gitkeep
-    /cli.coffee
-    /secret
-    EOF
-    mkdir -p attributes/ scripts/servers/ scripts/vendor/
-    touch README.md scripts/servers/.gitkeep scripts/vendor/.gitkeep attributes/networks.coffee
-    echo {} > attributes/memory.json
-    openssl rand -base64 512 > secret
-    git init
-    borg install resources
-    """,
-    (error, stdout, stderr) ->
-      process.stderr.write(error+'\n') and process.exit 1 if error
+    cmd = """
+      mkdir -p #{project_dir}
+      cd #{project_dir}
+      cat << EOF > .gitignore
+      node_modules/
+      scripts/vendor/
+      !.gitkeep
+      /cli.coffee
+      /secret
+      EOF
+      mkdir -p attributes/ scripts/servers/ scripts/vendor/
+      touch README.md scripts/servers/.gitkeep scripts/vendor/.gitkeep attributes/networks.coffee
+      echo {} > attributes/memory.json
+      openssl rand -base64 512 > secret
+      git init
+      borg install resources
+      """
+    child_process.exec cmd, (error, stdout, stderr) ->
       process.stdout.write stdout
       process.stderr.write stderr
 
-  when 'install'
+  when 'install', 'uninstall'
     return console.log BORG_HELP_INSTALL if process.args.length <= 1
-    repo = process.args[1]
-    name = path.basename repo, '.git'
-    if null is repo.match /\//
-      repo = 'borg-scripts/'+repo # assume borg-scripts/ if no repo specified
-    if null is repo.match /:/
-      repo = 'git@github.com:'+repo+'.git' # assume github if no host specified
-    cmd = """
-    git submodule add -f#{if options.v then " -b "+options.v else ''} #{repo} scripts/vendor/#{name}
-    cd scripts/vendor/#{name} && npm install
-    """
-    console.log cmd
-    child_process.exec cmd, (error, stdout, stderr) ->
-      process.stderr.write(error+'\n') and process.exit 1 if error
-      process.stdout.write stdout
-      process.stderr.write stderr
+    init_borg()
+
+    for repo in process.args.slice 1
+      name = path.basename repo, '.git'
+      if null is repo.match /\//
+        repo = 'borg-scripts/'+repo # assume borg-scripts/ if no repo specified
+      if null is repo.match /:/
+        repo = 'git@github.com:'+repo+'.git' # assume github if no host specified
+
+      if cmd is 'install'
+        borg.then execute "git submodule add -f#{if options.v then " -b "+options.v else ''} #{repo} scripts/vendor/#{name}"
+        _path = path.join process.cwd(), 'scripts', 'vendor', name
+        try
+          fs.statSync path.join _path, 'package.json'
+          borg.then execute 'npm update', cwd: _path
+        catch e
+          # skip
+      else
+        borg.then execute "git rm -rf scripts/vendor/#{name}"
+
+    borg.finally ->
 
   when 'update'
-    cmd = """
-    git submodule update --init --remote
-    """
-    submodules = fs.readdirSync path.join process.cwd(), 'scripts', 'vendor'
+    init_borg()
+    borg.then execute 'git submodule update --init --remote'
+
+    scripts_path = path.join process.cwd(), 'scripts'
+    scripts = fs.readdirSync scripts_path
+    for script in scripts when script isnt 'vendor' and not script.match /\./
+      _path = path.join scripts_path, script
+      try
+        fs.statSync path.join _path, 'package.json'
+        borg.then execute 'npm update', cwd: _path
+      catch e
+        borg.then log "#{Color.magenta}./#{path.relative process.cwd(), _path} has no dependencies.#{Color.reset}"
+
+    submodules = fs.readdirSync path.join scripts_path, 'vendor'
     for submodule in submodules when not submodule.match /^\./
-      cmd += "\ncd scripts/vendor/#{submodule} && npm update && cd -"
-    console.log cmd
-    child_process.exec cmd, (error, stdout, stderr) ->
-      process.stderr.write(error+'\n') and process.exit 1 if error
-      process.stdout.write stdout
-      process.stderr.write stderr
+      _path = path.join scripts_path, 'vendor', submodule
+      try
+        fs.statSync path.join _path, 'package.json'
+        borg.then execute 'npm update', cwd: _path
+      catch e
+        borg.then log "#{Color.magenta}./#{path.relative process.cwd(), _path} has no dependencies.#{Color.reset}"
+
+    borg.finally ->
 
   when 'list'
     delegate_borg cmd
@@ -350,7 +385,7 @@ switch cmd = process.args[0]
       switch process.args[1]
         when 'init'
           console.log BORG_HELP_INIT
-        when 'install'
+        when 'install', 'uninstall'
           console.log BORG_HELP_INSTALL
         when 'update'
           console.log BORG_HELP_UPDATE
