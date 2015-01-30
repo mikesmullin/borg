@@ -2,6 +2,7 @@ process.stdin.setEncoding 'utf8'
 require 'sugar'
 _     = require 'lodash'
 path  = require 'path'
+async = require 'async2'
 delay = (s,f) -> setTimeout f, s
 
 module.exports = (borg) ->

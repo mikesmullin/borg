@@ -15,8 +15,9 @@
     "coffee-script": "*"
   },
   "dependencies": {
-    "ssh2": "*",
+    "async2": "*",
     "lodash": "*",
+    "ssh2": "*",
     "sugar": "*"
   }
 }
