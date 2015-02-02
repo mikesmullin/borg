@@ -47,8 +47,14 @@ class Borg
       input = 'binary'
       output = 'binary'
     cipher = crypto["create#{if cmd is 'en' then 'C' else 'Dec'}ipher"] 'aes-256-cbc', @secret
-    r = cipher.update s, input, output
-    return r += cipher.final output
+    if output is 'binary'
+      b = [cipher.update new Buffer(s)]
+      b.push cipher.final()
+      r = Buffer.concat b
+    else
+      r = cipher.update s, input, output
+      r += cipher.final output
+    return r
   encrypt: _crypt 'en'
   decrypt: _crypt 'de'
   checksum: (str, algorithm='sha256', encoding='hex') ->

@@ -1,6 +1,6 @@
 {
   "name": "borg",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Automated provisioning and deployment with Node.JS.",
   "main": "src/index.coffee",
   "bin": "bin/borg",
@@ -15,8 +15,9 @@
     "coffee-script": "*"
   },
   "dependencies": {
-    "ssh2": "*",
+    "async2": "*",
     "lodash": "*",
+    "ssh2": "*",
     "sugar": "*"
   }
 }
