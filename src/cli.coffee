@@ -250,7 +250,7 @@ switch cmd = process.args[0]
       node_modules/
       scripts/vendor/
       !.gitkeep
-      /cli.coffee
+      /.cli.coffee
       /secret
       EOF
       mkdir -p attributes/ scripts/servers/ scripts/vendor/
