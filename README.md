@@ -8,6 +8,7 @@ http://mikesmullin.github.io/borg-docs/
 **Third-party Resources**:  
 https://github.com/borg-scripts/
 
+**NOTICE**: There will be no support for running the Borg client on Windows. Use Mac OS/X or Linux.
 
 ## What makes Borg different?
 
