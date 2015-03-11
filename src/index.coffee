@@ -350,11 +350,10 @@ class Borg
     unless USING_CLI
       process.stderr.write "Error: tty stdin required to answer, but not using cli.\n"
       return fail_cb()
-    process.stdin.on 'readable', ->
-      chunk = process.stdin.read()
+    process.stdin.on 'data', (chunk) ->
       if chunk isnt null
+        process.stdin.removeAllListeners 'data'
         process.stdin.pause()
-        process.stdin.removeAllListeners 'readable'
         return fail_cb() if (''+chunk).toLowerCase() isnt "y\n"
         cb()
     process.stdin.resume()

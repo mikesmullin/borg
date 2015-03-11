@@ -21,7 +21,7 @@ module.exports = (log) -> Aws =
       if stdout
         log child.pid+'#stdout: '+ stdout if DEBUG
         data = JSON.parse stdout
-        cb null, data
+      cb null, data
 
   createInstance: (name, locals, instance_cb, done_cb) ->
     log "creating one #{name} instance..."
@@ -70,7 +70,7 @@ module.exports = (log) -> Aws =
         instance_cb res.instanceId = data.Instances[0].InstanceId
         cb()
 
-    waitForInstanceToBecomeReady = -> delay 1000, ->
+    waitForInstanceToBecomeReady = -> delay 4000, ->
       Aws.jsonCli """
       aws ec2 describe-instances \
         --region #{locals.aws_region} \
