@@ -21,7 +21,7 @@ module.exports = (log) -> Aws =
       if stdout
         log child.pid+'#stdout: '+ stdout if DEBUG
         data = JSON.parse stdout
-        cb null, data
+      cb null, data
 
   createInstance: (name, locals, instance_cb, done_cb) ->
     log "creating one #{name} instance..."
