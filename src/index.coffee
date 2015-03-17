@@ -486,11 +486,12 @@ class Borg
         if o.target.apply @
           @server.scripts.push path.join 'scripts', 'servers', script
       unless @server.scripts.length
-        blank_path = path.join 'scripts', 'servers', 'blank'
+        blank_path = path.join 'scripts', 'servers', 'blank.coffee'
         try
           fs.statSync blank_path
           @server.scripts.push blank_path
         catch e
+          console.log "error: "+e
           # do nothing
 
       for script in @server.scripts
