@@ -63,14 +63,17 @@ module.exports = (log) -> AwsWrapper =
           Tenancy: locals.aws_tenancy or 'default'
       if locals.aws_ebs_volume?.optimized
         params.EbsOptimized = locals.aws_ebs_volume.optimized
-        
-      params.NetworkInterfaces = [{ DeviceIndex: 0 }]
+      if locals.aws_security_groups
+        params.SecurityGroups = locals.aws_security_groups
+
+      if locals.aws_subnet or
+        locals.aws_associate_public_ip or
+        locals.aws_security_group_ids
+          params.NetworkInterfaces = [{ DeviceIndex: 0 }]
       if locals.aws_subnet
         params.NetworkInterfaces[0].SubnetId = locals.aws_subnet
       if locals.aws_associate_public_ip
         params.NetworkInterfaces[0].AssociatePublicIpAddress = locals.aws_associate_public_ip
-      if locals.aws_security_groups
-        params.SecurityGroups = locals.aws_security_groups
       if locals.aws_security_group_ids
         params.NetworkInterfaces[0].Groups = locals.aws_security_group_ids
 
