@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "async2": "*",
+    "aws-sdk": "^2.1.19",
     "lodash": "*",
     "ssh2": "*",
     "sugar": "*"
