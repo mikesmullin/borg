@@ -61,16 +61,18 @@ module.exports = (log) -> AwsWrapper =
         params.Placement =
           AvailabilityZone: locals.aws_zone
           Tenancy: locals.aws_tenancy or 'default'
+      if locals.aws_ebs_volume?.optimized
+        params.EbsOptimized = locals.aws_ebs_volume.optimized
+        
+      params.NetworkInterfaces = [{ DeviceIndex: 0 }]
+      if locals.aws_subnet
+        params.NetworkInterfaces[0].SubnetId = locals.aws_subnet
+      if locals.aws_associate_public_ip
+        params.NetworkInterfaces[0].AssociatePublicIpAddress = locals.aws_associate_public_ip
       if locals.aws_security_groups
         params.SecurityGroups = locals.aws_security_groups
       if locals.aws_security_group_ids
-        params.SecurityGroupIds = locals.aws_security_group_ids
-      if locals.aws_subnet
-        params.SubnetId = locals.aws_subnet
-      #if locals.aws_associate_public_ip
-        #params.AssociatePublicIpAddress = locals.aws_associate_public_ip
-      if locals.aws_ebs_volume?.optimized
-        params.EbsOptimized = locals.aws_ebs_volume.optimized
+        params.NetworkInterfaces[0].Groups = locals.aws_security_group_ids
 
       AwsWrapper.ec2Api 'runInstances', params, (data) ->
         instance_cb res.instanceId = data.Instances[0].InstanceId
