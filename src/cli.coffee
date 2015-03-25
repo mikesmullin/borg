@@ -215,6 +215,7 @@ delegate_borg = (cmd) ->
       process.stderr.write 'Error: '+err+"\n"
       console.trace()
       process.exit 1
+    process.exit 0
 
 log = (s) -> (cb) ->
   process.stdout.write "#{s}\n"
