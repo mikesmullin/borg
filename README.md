@@ -38,6 +38,8 @@ Since Chef debuted in 2009, community contributions have saturated the culinary 
 
 ## Installation
 
+### Windows (Cygwin), Linux, Mac OS/X:
+
 ```bash
 npm install borg -g
 borg help
