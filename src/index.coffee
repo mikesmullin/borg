@@ -425,6 +425,7 @@ class Borg
           last_group = server.group
         console.log "#{((server.public_ip or server.private_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
     process.stderr.write "\n#{count} network server definition(s) found.\n\n"
+    cb null
 
 
   create: (locals, cb) ->
@@ -486,11 +487,12 @@ class Borg
         if o.target.apply @
           @server.scripts.push path.join 'scripts', 'servers', script
       unless @server.scripts.length
-        blank_path = path.join 'scripts', 'servers', 'blank'
+        blank_path = path.join 'scripts', 'servers', 'blank.coffee'
         try
           fs.statSync blank_path
           @server.scripts.push blank_path
         catch e
+          console.log "error: "+e
           # do nothing
 
       for script in @server.scripts
