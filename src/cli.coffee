@@ -223,7 +223,8 @@ log = (s) -> (cb) ->
 
 os_agnostic_spawn = (cmd, args, o) ->
   if process.platform is 'win32'
-    args = ['-l', '-c', "cd #{o.cwd.replace(/\\/g, '/')}; "+ cmd + ' ' + args.join(' ')]
+    cd = if o.cwd? then "cd #{o.cwd.replace(/\\/g, '/')}; " else ''
+    args = ['--verbose', '--debug', '--posix', '-l', '-c', cd + cmd + ' ' + args.join(' ')]
     cmd = "bash.exe"
   child_process.spawn cmd, args, o
 
@@ -362,7 +363,7 @@ switch cmd = process.args[0]
           if process.options.save
             borg.remember "/#{server.fqdn}", process.options.locals
           args.push "#{server.ssh.host}:#{server.ssh.port}"
-        os_agnostic_spawn 'cssh', args, stdio: 'inherit'
+        execute('cssh '+args.join(' '))(-> process.exit 0)
     else
       process.stderr.write "\n0 existing network server definition(s) found.#{if rx then ' FQDN RegEx: '+rx else ''}\n\n"
 
