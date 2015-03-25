@@ -425,6 +425,7 @@ class Borg
           last_group = server.group
         console.log "#{((server.public_ip or server.private_ip or '#')+'            ').substr 0, 16}#{server.fqdn}"
     process.stderr.write "\n#{count} network server definition(s) found.\n\n"
+    cb null
 
 
   create: (locals, cb) ->
