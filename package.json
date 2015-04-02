@@ -17,6 +17,7 @@
   "dependencies": {
     "async2": "*",
     "aws-sdk": "^2.1.19",
+    "jsonlint": "^1.6.2",
     "lodash": "*",
     "ssh2": "*",
     "sugar": "*"

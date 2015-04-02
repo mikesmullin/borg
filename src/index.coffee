@@ -6,6 +6,7 @@ require 'sugar'
 global.DEBUG = true
 delay = (s,f) -> setTimeout f, s
 crypto = require 'crypto'
+jsonlint_parser = require('jsonlint').parser
 
 module.exports =
 class Borg
@@ -384,7 +385,9 @@ class Borg
       delete require.cache[require.resolve memory_file] # invalidate cache
       memory = require memory_file
     catch e
-      # ignore errors
+      # try to tell user why the JSON is unparseable.
+      jsonlint_parser.parse(fs.readFileSync(memory_file).toString())
+      console.log e
     # evaluate path
     pointer = memory
     return pointer if xpath is '/' and value is undefined
