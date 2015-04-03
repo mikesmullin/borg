@@ -20,8 +20,12 @@ else
   #         we could have done it in pure Bash but relying on node keeps it more OS agnostic.
   TMP=.cli.coffee
   if [ ! -f $TMP ]; then
-    DIR=`dirname $0`
-    echo "require '${DIR//\\/\/}/../src/cli.coffee'" > $TMP
+    cat << EOF | coffee -s "${BASH_SOURCE[0]}" > $TMP
+    fs = require 'fs'
+    path = require 'path'
+    file_path = fs.realpathSync path.join path.dirname(process.argv[3]), path.dirname(fs.readlinkSync process.argv[3]), '..', 'src', 'cli.coffee'
+    console.log "require '#{file_path}'"
+EOF
   fi
   coffee $TMP "$@"
   test -f $TMP && rm $TMP
