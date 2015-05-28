@@ -223,11 +223,6 @@ class Borg
     server.ssh.user ||= 'ubuntu'
     server.ssh.host ||= server.public_ip or server.private_ip
     server.ssh.port ||= 22
-    readKey = (file) -> ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{file}"
-    if server.provider is 'aws'
-      server.ssh.key ||= readKey server.aws_key
-    else if server.ssh.key_file
-      server.ssh.key ||= readKey server.ssh.key_file
 
     # transform functions into objects with sneaky javascript getters;
     # looks like a non-function but in fact yields the result of a function every time
@@ -268,6 +263,15 @@ class Borg
             locals.instance is o.instance
               result.found = true
               _.merge o.server, locals # local attributes override everything else for server
+
+              # one particular calculated attribute comes from locals;
+              # can't find a better place to do that calculation yet
+              readKey = (file) -> ''+ fs.readFileSync file
+              if o.server.provider is 'aws'
+                o.server.ssh.key ||= readKey o.server.aws_key
+              else if o.server.ssh.key_file
+                o.server.ssh.key ||= readKey o.server.ssh.key_file
+
               result.server = o.server
 
     return result
