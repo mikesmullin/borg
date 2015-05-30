@@ -266,7 +266,10 @@ class Borg
 
               # one particular calculated attribute comes from locals;
               # can't find a better place to do that calculation yet
-              readKey = (file) -> ''+ fs.readFileSync file
+              readKey = (file) -> try
+                                    ''+ fs.readFileSync file
+                                  catch e
+                                    ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{file}"
               if o.server.provider is 'aws'
                 o.server.ssh.key ||= readKey o.server.aws_key
               else if o.server.ssh.key_file
