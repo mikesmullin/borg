@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -x
 
 # NOTICE: places a temporary bootstrap .cli.coffee file in the cwd.
 #         we do this so that coffee is executed relative to the process.cwd of the project root,
