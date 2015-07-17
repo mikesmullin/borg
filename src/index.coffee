@@ -169,7 +169,7 @@ class Borg
         subproject: subprojects
         tlds: tlds
         required: required
-      results = results.push map_cb server
+      results = results.concat _.map server, map_cb
     return results
 
   eachServer: (each_cb) ->
