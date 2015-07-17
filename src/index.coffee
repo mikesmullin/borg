@@ -119,7 +119,7 @@ class Borg
   default: (o) => @server = _.merge o, @server
 
   server_name: ({ datacenter, env, type, instance, subproject, tld }) =>
-    instance ||= '01'
+    instance = '01' if instance is null
     subproject ||= @server.subproject ||= ''
     "#{datacenter or @server.datacenter}-#{env or @server.env}-#{type}#{instance}#{subproject && '-'+subproject}.#{tld or @server.tld}"
 
