@@ -128,6 +128,7 @@ class Borg
       datacenter: datacenter or @server.datacenter
       env: env or @server.env
       type: type
+      instance: instance
       subproject: subproject ||= @server.subproject ||= ''
       tld: tld or @server.tld
     _die = (s) ->
@@ -168,7 +169,7 @@ class Borg
         subproject: subprojects
         tlds: tlds
         required: required
-      results = results.concat _.map server, map_cb
+      results = results.push map_cb server
     return results
 
   eachServer: (each_cb) ->
