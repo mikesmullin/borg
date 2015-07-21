@@ -528,6 +528,7 @@ class Borg
     # unless the user specifies otherwise via cli --locals=ssh:port:
     locals.ssh ||= {}
     locals.ssh.port ||= 22
+    locals.permitReboot = true unless locals.permitReboot = false
     @create locals, =>
       @assimilate locals, cb
         # TODO: also run checkup
