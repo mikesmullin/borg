@@ -119,7 +119,7 @@ class Borg
   default: (o) => @server = _.merge o, @server
 
   server_name: ({ datacenter, env, type, instance, subproject, tld }) =>
-    instance ||= '01'
+    instance = '01' if instance is null
     subproject ||= @server.subproject ||= ''
     "#{datacenter or @server.datacenter}-#{env or @server.env}-#{type}#{instance}#{subproject && '-'+subproject}.#{tld or @server.tld}"
 
@@ -128,6 +128,7 @@ class Borg
       datacenter: datacenter or @server.datacenter
       env: env or @server.env
       type: type
+      instance: instance
       subproject: subproject ||= @server.subproject ||= ''
       tld: tld or @server.tld
     _die = (s) ->
@@ -266,7 +267,10 @@ class Borg
 
               # one particular calculated attribute comes from locals;
               # can't find a better place to do that calculation yet
-              readKey = (file) -> ''+ fs.readFileSync file
+              readKey = (file) -> try
+                                    ''+ fs.readFileSync file
+                                  catch e
+                                    ''+ fs.readFileSync "#{process.env.HOME}/.ssh/#{file}"
               if o.server.provider is 'aws'
                 o.server.ssh.key ||= readKey o.server.aws_key
               else if o.server.ssh.key_file
@@ -531,6 +535,7 @@ class Borg
     # unless the user specifies otherwise via cli --locals=ssh:port:
     locals.ssh ||= {}
     locals.ssh.port ||= 22
+    locals.permitReboot = true unless locals.permitReboot = false
     @create locals, =>
       @assimilate locals, cb
         # TODO: also run checkup
