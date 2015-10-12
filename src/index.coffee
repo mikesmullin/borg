@@ -120,7 +120,8 @@ class Borg
 
   server_name: ({ datacenter, env, type, instance, subproject, tld }) =>
     instance ||= '01'
-    subproject ||= @server.subproject ||= ''
+    if subproject != '' # pass in empty string to force-override the default
+      subproject ||= @server.subproject ||= ''
     "#{datacenter or @server.datacenter}-#{env or @server.env}-#{type}#{instance}#{subproject && '-'+subproject}.#{tld or @server.tld}"
 
   find_server: ({ datacenter, env, type, instance, subproject, tld, required }) =>
