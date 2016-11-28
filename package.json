@@ -20,6 +20,6 @@
     "jsonlint": "*",
     "lodash": "*",
     "ssh2": "*",
-    "sugar": "*"
+    "sugar": "1.5.0"
   }
 }
